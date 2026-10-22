@@ -1,0 +1,90 @@
+{
+  "name": "videoimagem-uniconverter",
+  "version": "0.1.0",
+  "description": "Conversor de video \u2014 engine FFmpeg + UI Electron",
+  "main": "dist/main/main.js",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.renderer.json && node tools/copy-static.mjs",
+    "start": "npm run build && electron .",
+    "test": "tsc -p tsconfig.tests.json && node --test 'dist-test/tests/*.test.js'",
+    "clean": "rm -rf dist dist-test release",
+    "icon": "./tools/make-icon.sh",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.9.3"
+  },
+  "productName": "Videoimagem UniConverter",
+  "author": "Videoimagem",
+  "build": {
+    "appId": "com.videoimagem.uniconverter",
+    "productName": "Videoimagem UniConverter",
+    "copyright": "Copyright \u00a9 Videoimagem",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "../data",
+        "to": "data",
+        "filter": [
+          "**/*.json"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "build/icon.icns",
+      "darkModeSupport": true,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "identity": null,
+      "extendInfo": {
+        "NSHumanReadableCopyright": "Copyright \u00a9 Videoimagem"
+      }
+    },
+    "dmg": {
+      "title": "Videoimagem UniConverter",
+      "contents": [
+        {
+          "x": 140,
+          "y": 200,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "AudioVideo",
+      "icon": "build/icon.png"
+    }
+  }
+}

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:;"
+    />
+    <title>Videoimagem UniConverter</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <h1>Videoimagem UniConverter</h1>
+      </div>
+      <div class="env" id="env">verificando ambiente…</div>
+    </header>
+
+    <main class="layout">
+      <!-- ----------------------------- presets ----------------------------- -->
+      <aside class="panel presets">
+        <label class="search">
+          <input
+            type="search"
+            id="preset-search"
+            placeholder="Buscar preset (iPhone, MP4, ProRes…)"
+            autocomplete="off"
+          />
+        </label>
+        <div class="preset-list" id="preset-list" role="listbox" aria-label="Presets"></div>
+        <footer class="preset-count" id="preset-count"></footer>
+      </aside>
+
+      <!-- ------------------------------ work ------------------------------- -->
+      <section class="panel work">
+        <!-- fila -->
+        <div class="section-head">
+          <h2>Fila</h2>
+          <div class="section-actions">
+            <button type="button" class="btn small" id="add-files">Adicionar…</button>
+            <button type="button" class="btn small ghost" id="clear-finished" hidden>
+              Limpar concluídos
+            </button>
+            <button type="button" class="btn small ghost" id="clear-queue" hidden>Limpar</button>
+          </div>
+        </div>
+
+        <div class="dropzone" id="dropzone">
+          <div class="dropzone-empty" id="dropzone-empty">
+            <strong>Arraste arquivos aqui</strong>
+            <span>pode ser vários de uma vez</span>
+          </div>
+          <ul class="queue" id="queue" hidden></ul>
+        </div>
+
+        <!-- ajustes -->
+        <div class="settings" id="settings" hidden>
+          <div class="section-head">
+            <h2 id="target-title">—</h2>
+            <div class="toggles">
+              <label class="toggle">
+                <input type="checkbox" id="prefer-hardware" />
+                <span>Aceleração por hardware</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="allow-passthrough" checked />
+                <span>Copiar stream quando possível</span>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="clear-on-done" />
+                <span>Limpar a fila ao terminar</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="groups">
+            <fieldset class="group">
+              <legend>Vídeo</legend>
+              <label>Codec <select id="videoEncoder"></select></label>
+              <label>Resolução <select id="resolution"></select></label>
+              <label>Taxa de quadros <select id="frameRate"></select></label>
+              <label>Bitrate <select id="videoBitrateKbps"></select></label>
+              <label>Encaixe
+                <select id="fitMode">
+                  <option value="fit">Caber (barras)</option>
+                  <option value="fill">Preencher (corta)</option>
+                  <option value="stretch">Esticar</option>
+                </select>
+              </label>
+            </fieldset>
+
+            <fieldset class="group">
+              <legend>Áudio</legend>
+              <label>Codec <select id="audioEncoder"></select></label>
+              <label>Bitrate <select id="audioBitrateKbps"></select></label>
+              <label>Sample rate <select id="sampleRateHz"></select></label>
+              <label>Canais <select id="channels"></select></label>
+            </fieldset>
+          </div>
+
+          <div class="notes" id="notes"></div>
+
+          <details class="command">
+            <summary>Comando ffmpeg</summary>
+            <pre id="command-preview"></pre>
+          </details>
+
+          <div class="output">
+            <span class="output-path" id="output-path"></span>
+            <button type="button" class="btn ghost small" id="pick-dir">Pasta de saída…</button>
+            <button type="button" class="btn ghost small" id="reset-dir" hidden>
+              Usar a pasta de origem
+            </button>
+          </div>
+        </div>
+
+        <!-- barra de execucao -->
+        <div class="runbar">
+          <div class="progress" id="progress" hidden>
+            <div class="bar"><div class="fill" id="progress-fill"></div></div>
+            <span class="progress-text" id="progress-text"></span>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn primary" id="convert" disabled>Converter</button>
+            <button type="button" class="btn danger" id="cancel-all" hidden>Cancelar tudo</button>
+          </div>
+        </div>
+
+        <details class="log" id="log-box" hidden>
+          <summary>Log do ffmpeg</summary>
+          <pre id="log"></pre>
+        </details>
+      </section>
+    </main>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>

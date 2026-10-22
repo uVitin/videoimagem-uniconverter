@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-test"
+  },
+  "include": [
+    "src/engine/**/*.ts",
+    "src/main/queue.ts",
+    "tests/**/*.ts"
+  ]
+}

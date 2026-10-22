@@ -1,0 +1,78 @@
+{
+  "AVI": {
+    "video": [
+      "H264"
+    ],
+    "audio": [
+      "MP3",
+      "PCM"
+    ]
+  },
+  "MKV": {
+    "video": [
+      "HEVC",
+      "H264"
+    ],
+    "audio": [
+      "AAC",
+      "AC3",
+      "MP3"
+    ]
+  },
+  "MP4": {
+    "video": [
+      "HEVC",
+      "H264"
+    ],
+    "audio": [
+      "AAC",
+      "AC3",
+      "PCM"
+    ]
+  },
+  "MOV": {
+    "video": [
+      "HEVC",
+      "H264"
+    ],
+    "audio": [
+      "AAC",
+      "AC3",
+      "PCM"
+    ]
+  },
+  "M4V": {
+    "video": [
+      "HEVC",
+      "H264"
+    ],
+    "audio": [
+      "AAC",
+      "AC3"
+    ]
+  },
+  "FLV": {
+    "video": [
+      "H264"
+    ],
+    "audio": [
+      "AAC"
+    ]
+  },
+  "M2TS": {
+    "video": [
+      "H264"
+    ],
+    "audio": [
+      "AC3"
+    ]
+  },
+  "MTS": {
+    "video": [
+      "H264"
+    ],
+    "audio": [
+      "AC3"
+    ]
+  }
+}

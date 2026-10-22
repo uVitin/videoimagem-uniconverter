@@ -1,0 +1,606 @@
+{
+  "format_to_rule_key": {
+    "PNG Image Sequence": "8kCommon",
+    "GIF": "4kCommon",
+    "GIFA": "4kCommon",
+    "GIF(Alpha)": "4kCommon",
+    "JPG Image Sequence": "8kCommon",
+    "iPhone 3G,3GS": "iPod",
+    "iPhone 4": "iPhone 4",
+    "AVC Intraframe": "8kCommon",
+    "HEVC Intraframe": "4kCommon",
+    "iPhone 4S": "iPhone 4S",
+    "iPhone 5": "iPhone 4S",
+    "iPhone 5s": "iPhone 4S",
+    "iPhone 5c": "iPhone 4S",
+    "iPhone 6,6 Plus": "iPhone 4S",
+    "iPod": "iPod",
+    "iPad": "iPad 1&2",
+    "iPad 2": "iPad 1&2",
+    "iPad 3": "iPad 3",
+    "Galaxy S4": "iPad 3",
+    "Galaxy S5": "iPad 3",
+    "Galaxy Note": "iPad 3",
+    "Galaxy S3": "iPad 3",
+    "iPad 3,4": "iPad 3",
+    "iPad Air": "iPad 3",
+    "iPad mini": "iPad 3",
+    "iPad mini2": "iPad 3",
+    "Apple TV": "Apple TV 1",
+    "Apple TV 2": "Apple TV 2",
+    "Apple TV 3": "Apple TV 3",
+    "Apple TV 4K": "Apple TV 4K",
+    "Apple Generic": "Apple TV 1",
+    "PSP": "PSP",
+    "Playstation 3": "Apple TV 3",
+    "Playstation 4": "Apple TV 3",
+    "Xbox 360": "Apple TV 3",
+    "Xbox one": "Apple TV 3",
+    "MOV": "8kCommon",
+    "4K Video": "4kCommon",
+    "HEVC MP4": "8kCommon",
+    "HEVC MKV": "8kCommon",
+    "HD MOV": "4kCommon",
+    "HD M4V": "Common",
+    "HD MKV": "4kCommon",
+    "HD MP4": "4kCommon",
+    "HD MPEG": "Common",
+    "HD TS": "Common_8Channels",
+    "HD TRP": "Common",
+    "iDVD": "Common",
+    "iMovie": "Common",
+    "Final Cut Pro 7": "QuickTime",
+    "Final Cut Pro X": "QuickTime",
+    "M4V": "8kCommon",
+    "MP4": "8kCommon",
+    "Cineform": "CineForm",
+    "MP4(Alpha)": "CineForm",
+    "DivX": "Common",
+    "WMV": "Common",
+    "ASF": "Common",
+    "MKV": "8kCommon",
+    "AVI": "8kCommon",
+    "MPEG-1": "Common",
+    "MPEG-2": "Common",
+    "VOB": "Common",
+    "3G2": "Common",
+    "SWF": "Common",
+    "OGV": "Common",
+    "WebM": "Common",
+    "WebM(Alpha)": "Common",
+    "YouTube": "Common",
+    "Facebook": "Common",
+    "Vimeo": "Common",
+    "FLV": "Common",
+    "F4V": "Common_8Channels",
+    "ProRes": "QuickTime",
+    "ProRes HQ": "QuickTime",
+    "ProRes LT": "QuickTime",
+    "ProRes Proxy": "QuickTime",
+    "ProRes 4444": "QuickTime",
+    "ProRes 4444 XQ": "QuickTime",
+    "Apple Intermediate Codec": "QuickTime",
+    "DNxHD 720P": "QuickTime",
+    "DNxHD 1080P": "QuickTime",
+    "New Apple TV": "Apple TV 3",
+    "iPad 1,2": "iPad 1&2",
+    "iPad mini 2,3,4": "iPad 3",
+    "iPad Air 1,2": "iPad 3",
+    "iPhone 6S/Plus": "iPhone 8",
+    "iPhone 5,5C,5S,SE": "iPhone 8",
+    "iPhone 4,4S": "iPhone 4S",
+    "iPad Pro": "iPad 3",
+    "Galaxy S6": "iPad 3",
+    "Galaxy Note 4,5": "iPad 3",
+    "iPod Touch 4,5": "iPhone 4S",
+    "iPod Touch 1,2,3": "iPod",
+    "4K MOV": "4kCommon",
+    "4K MKV": "4kCommon",
+    "Galaxy A9": "iPad 3",
+    "Galaxy A7": "iPad 3",
+    "Galaxy J7": "iPad 3",
+    "Galaxy J5": "iPad 3",
+    "Galaxy On 8": "iPad 3",
+    "Galaxy On 7": "iPad 3",
+    "Galaxy Tab S": "iPad 3",
+    "Galaxy Tab A": "iPad 3",
+    "XVID": "Common",
+    "Huawei Phone": "iPad 3",
+    "HTC Ultra": "iPad 3",
+    "Htc Desire": "iPad 3",
+    "Google Pixel": "iPad 3",
+    "Xperia XZ": "iPad 3",
+    "HTC Vive": "4kCommon",
+    "Oculus Rift": "4kCommon",
+    "Gear VR": "4kCommon",
+    "DNxHD": "DNxHD",
+    "AMV ": "Common",
+    "Live Photo": "8kCommon"
+  },
+  "rules": {
+    "iPod": {
+      "Video": {
+        "FrameRates": [
+          "{1,30}"
+        ],
+        "Resolutions": [
+          "{16,640}*{16,480}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};700 of 320*240*30",
+          "width BETWEEN {320,640} AND height BETWEEN {240,480};1500 of 640*480*30",
+          "1500"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "128"
+        ],
+        "Channels": [
+          "2"
+        ]
+      }
+    },
+    "iPhone 4": {
+      "Video": {
+        "FrameRates": [
+          "{1,30}"
+        ],
+        "Resolutions": [
+          "{16,1280}*{16,720}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};768 of 320*240*30",
+          "width BETWEEN {320,848} AND height BETWEEN {240,480};1500 of 848*480*30",
+          "width BETWEEN {848,1280} AND height BETWEEN {480,720};2000 of 1280*720*30",
+          "1500"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "128"
+        ],
+        "Channels": [
+          "2"
+        ]
+      }
+    },
+    "iPhone 4S": {
+      "Video": {
+        "FrameRates": [
+          "{1,60}"
+        ],
+        "Resolutions": [
+          "{16,1920}*{16,1080}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};768 of 320*240*30",
+          "width BETWEEN {320,848} AND height BETWEEN {240,480};1500 of 848*480*30",
+          "width BETWEEN {848,1280} AND height BETWEEN {480,720};2000 of 1280*720*30",
+          "width BETWEEN {1280,1920} AND height BETWEEN {720,1080};6000 of 1920*1080*30",
+          "2000"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "128"
+        ],
+        "Channels": [
+          "2"
+        ]
+      }
+    },
+    "iPhone 8": {
+      "Video": {
+        "FrameRates": [
+          "{1,60}"
+        ],
+        "Resolutions": [
+          "{16,1920}*{16,1080}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};768 of 320*240*30",
+          "width BETWEEN {320,848} AND height BETWEEN {240,480};1500 of 848*480*30",
+          "width BETWEEN {848,1280} AND height BETWEEN {480,720};6000 of 1280*720*30",
+          "width BETWEEN {1280,1920} AND height BETWEEN {720,1080};15000 of 1920*1080*30",
+          "40000"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "128"
+        ],
+        "Channels": [
+          "2"
+        ]
+      }
+    },
+    "iPad 1&2": {
+      "Video": {
+        "FrameRates": [
+          "{1,30}"
+        ],
+        "Resolutions": [
+          "{16,1280}*{16,720}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};768 of 320*240*30",
+          "width BETWEEN {320,848} AND height BETWEEN {240,480};2000 of 848*480*30",
+          "width BETWEEN {848,1280} AND height BETWEEN {480,720};5000 of 1280*720*30",
+          "2000"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "128"
+        ],
+        "Channels": [
+          "2"
+        ]
+      }
+    },
+    "iPad 3": {
+      "Video": {
+        "FrameRates": [
+          "{1,60}"
+        ],
+        "Resolutions": [
+          "{16,1920}*{16,1080}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};768 of 320*240*30",
+          "width BETWEEN {320,848} AND height BETWEEN {240,480};3000 of 848*480*30",
+          "width BETWEEN {848,1280} AND height BETWEEN {480,720};5000 of 1280*720*30",
+          "width BETWEEN {1280,1920} AND height BETWEEN {720,1080};8000 of 1920*1080*30",
+          "5000"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "128"
+        ],
+        "Channels": [
+          "2"
+        ]
+      }
+    },
+    "Apple TV 1": {
+      "Video": {
+        "FrameRates": [
+          "width BETWEEN {0,960}  AND height BETWEEN {0,540};{1,30}",
+          "width BETWEEN {960,1280}  AND height BETWEEN {540,720};{1,24}",
+          "{1,24}"
+        ],
+        "Resolutions": [
+          "framerate < 25;{16,1280}*{16,720}",
+          "framerate >= 25;{16,960}*{16,540}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};768 of 320*240*30",
+          "width BETWEEN {320,848} AND height BETWEEN {240,480};3000 of 848*480*30",
+          "width BETWEEN {848,1280} AND height BETWEEN {480,720};5000 of 1280*720*30",
+          "3000"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "128"
+        ],
+        "Channels": [
+          "channel == 2;2",
+          "channel == 6;6"
+        ]
+      }
+    },
+    "Apple TV 2": {
+      "Video": {
+        "FrameRates": [
+          "{1,30}"
+        ],
+        "Resolutions": [
+          "{16,1280}*{16,720}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};768 of 320*240*30",
+          "width BETWEEN {320,848} AND height BETWEEN {240,480};3000 of 848*480*30",
+          "width BETWEEN {848,1280} AND height BETWEEN {480,720};5000 of 1280*720*30",
+          "3000"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "128"
+        ],
+        "Channels": [
+          "channel == 2;2",
+          "channel == 6;6"
+        ]
+      }
+    },
+    "Apple TV 3": {
+      "Video": {
+        "FrameRates": [
+          "{1,30}"
+        ],
+        "Resolutions": [
+          "{16,1920}*{16,1080}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};768 of 320*240*30",
+          "width BETWEEN {320,848} AND height BETWEEN {240,480};3000 of 848*480*30",
+          "width BETWEEN {848,1280} AND height BETWEEN {480,720};5000 of 1280*720*30",
+          "width BETWEEN {1280,1920} AND height BETWEEN {720,1080};8000 of 1920*1080*30",
+          "5000"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "48000"
+        ],
+        "BitRates": [
+          "160"
+        ],
+        "Channels": [
+          "channel == 2;2",
+          "channel == 6;6"
+        ]
+      }
+    },
+    "Apple TV 4K": {
+      "Video": {
+        "FrameRates": [
+          "{1,30}"
+        ],
+        "Resolutions": [
+          "{16,4096}*{16,3072}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};768 of 320*240*30",
+          "width BETWEEN {320,848} AND height BETWEEN {240,480};3000 of 848*480*30",
+          "width BETWEEN {848,1280} AND height BETWEEN {480,720};5000 of 1280*720*30",
+          "width BETWEEN {1280,1920} AND height BETWEEN {720,1080};8000 of 1920*1080*30"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "48000"
+        ],
+        "BitRates": [
+          "160"
+        ],
+        "Channels": [
+          "channel == 2;2",
+          "channel == 6;6"
+        ]
+      }
+    },
+    "PSP": {
+      "Video": {
+        "FrameRates": [
+          "{1,30}"
+        ],
+        "Resolutions": [
+          "{16,1280}*{16,720}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,320}  AND height BETWEEN {0,240};768 of 320*240*30",
+          "width BETWEEN {320,848} AND height BETWEEN {240,480};1500 of 848*480*30",
+          "width BETWEEN {848,1280} AND height BETWEEN {480,720};2000 of 1280*720*30",
+          "1500"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "128"
+        ],
+        "Channels": [
+          "2"
+        ]
+      }
+    },
+    "Common": {
+      "Video": {
+        "FrameRates": [
+          "{1,60}"
+        ],
+        "Resolutions": [
+          "{16,1920}*{16,1080}"
+        ],
+        "BitRates": []
+      },
+      "Audio": {
+        "SampleRates": [
+          "samplerate == 44100;44100",
+          "samplerate == 22050;22050",
+          "samplerate == 32000;32000"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,1280} AND height BETWEEN {0,720};128",
+          "160"
+        ],
+        "Channels": [
+          "2"
+        ]
+      }
+    },
+    "Common_8Channels": {
+      "Video": {
+        "FrameRates": [
+          "{1,60}"
+        ],
+        "Resolutions": [
+          "{16,1920}*{16,1080}"
+        ],
+        "BitRates": []
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,1280} AND height BETWEEN {0,720};128",
+          "160"
+        ],
+        "Channels": [
+          "channel == 2;2",
+          "channel == 8;8"
+        ]
+      }
+    },
+    "4kCommon": {
+      "Video": {
+        "FrameRates": [
+          "{1,60}"
+        ],
+        "Resolutions": [
+          "{16,4096}*{16,3072}"
+        ],
+        "BitRates": []
+      },
+      "Audio": {
+        "SampleRates": [
+          "samplerate == 44100;44100",
+          "samplerate == 48000;48000"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,1280} AND height BETWEEN {0,720};128",
+          "160"
+        ],
+        "Channels": [
+          "channel == 2;2",
+          "channel == 6;6"
+        ]
+      }
+    },
+    "CineForm": {
+      "Video": {
+        "FrameRates": [
+          "{1,60}"
+        ],
+        "Resolutions": [
+          "{16,4096}*{16,3072}"
+        ],
+        "ResolutionBlock": "16,8",
+        "BitRates": []
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,1280} AND height BETWEEN {0,720};128",
+          "160"
+        ],
+        "Channels": [
+          "channel == 2;2",
+          "channel == 6;6"
+        ]
+      }
+    },
+    "8kCommon": {
+      "Video": {
+        "FrameRates": [
+          "{1,120}"
+        ],
+        "Resolutions": [
+          "{16,8192}*{16,4608}"
+        ],
+        "BitRates": []
+      },
+      "Audio": {
+        "SampleRates": [
+          "samplerate == 44100;44100",
+          "samplerate == 48000;48000",
+          "samplerate == 96000;96000",
+          "samplerate == 192000;192000"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,1280} AND height BETWEEN {0,720};128",
+          "160"
+        ],
+        "Channels": [
+          "channel == 2;2",
+          "channel == 6;6",
+          "channel == 8;8"
+        ]
+      }
+    },
+    "QuickTime": {
+      "Video": {
+        "FrameRates": [
+          "{1,60}"
+        ],
+        "Resolutions": [
+          "{16,4096}*{16,3072}"
+        ],
+        "BitRates": []
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,1280} AND height BETWEEN {0,720};128",
+          "160"
+        ],
+        "Channels": [
+          "channel == 2;2",
+          "channel == 8;8"
+        ]
+      }
+    },
+    "DNxHD": {
+      "Video": {
+        "FrameRates": [
+          "{15,30}"
+        ],
+        "Resolutions": [
+          "{1080,1920}*{720,1080}"
+        ],
+        "BitRates": [
+          "width BETWEEN {0,1500}  AND height BETWEEN {0,900};60000 of 1080*720*30",
+          "width BETWEEN {1500,1920} AND height BETWEEN {900,1080};90000 of 1920*1080*30",
+          "90000"
+        ]
+      },
+      "Audio": {
+        "SampleRates": [
+          "44100"
+        ],
+        "BitRates": [
+          "256"
+        ],
+        "Channels": [
+          "2"
+        ]
+      }
+    }
+  }
+}

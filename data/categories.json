@@ -1,0 +1,42 @@
+[
+  {
+    "id": 7,
+    "title": "Video",
+    "icon": "CategoryCommonVideo"
+  },
+  {
+    "id": 8,
+    "title": "Audio",
+    "icon": "CategoryCommonAudio"
+  },
+  {
+    "id": 1,
+    "title": "Devices",
+    "icon": "CategoryAppleDevices"
+  },
+  {
+    "id": 5,
+    "title": "Editing",
+    "icon": "CategorySoftware"
+  },
+  {
+    "id": 4,
+    "title": "HD &3D",
+    "icon": "CategoryHDMovies"
+  },
+  {
+    "id": 9,
+    "title": "Web Sharing",
+    "icon": "CategoryWebVideo"
+  },
+  {
+    "id": 10,
+    "title": "Image",
+    "icon": "CategoryWebVideo"
+  },
+  {
+    "id": 200,
+    "title": "Custom",
+    "icon": "CategoryCommonVideo"
+  }
+]

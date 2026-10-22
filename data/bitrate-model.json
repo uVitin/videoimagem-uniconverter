@@ -1,0 +1,501 @@
+{
+  "fourcc_to_family": {
+    "K264": "4K264",
+    "K265": "H.265",
+    "HEVC": "H.265",
+    "AV1 ": "H.265",
+    "H264": "H.264(Baseline)",
+    "FAVC": "H.264(Baseline)",
+    "IAVC": "H.264(Baseline)",
+    "IPON": "H.264(Baseline)",
+    "IPAN": "H.264(Baseline)",
+    "M264": "H.264(Baseline)",
+    "VAVC": "H.264(Baseline)",
+    "HAVC": "H.264(Baseline)",
+    "havc": "H.264(Baseline)",
+    "X264": "H.264(Baseline)",
+    "mp1v": "MPEG-1",
+    "mp2v": "MPEG-2",
+    "MP2V": "MPEG-2",
+    "HMP2": "MPEG-2",
+    "flv1": "FLV1",
+    "VP8 ": "VP8",
+    "OGV ": "VP8",
+    "WMV2": "WMV",
+    "MP4V": "MPEG-4",
+    "MPON": "MPEG-4",
+    "IM4V": "MPEG-4",
+    "mp43": "MPEG-4",
+    "Xvid": "MPEG-4",
+    "DIVX": "MPEG-4",
+    "PAVC": "H.264(Main)",
+    "PS3H": "H.264(Main)",
+    "qtv0": "QuickTime",
+    "qtv1": "QuickTime",
+    "qtv2": "QuickTime",
+    "qtv3": "QuickTime",
+    "qtv4": "QuickTime",
+    "qtv5": "QuickTime",
+    "qtv6": "QuickTime",
+    "AVHD": "DNxHD",
+    "CFHD": "CineForm",
+    "AMV ": "AMV "
+  },
+  "family_coefficient": {
+    "MJPEG": 8,
+    "MPEG-2": 2,
+    "H.263": 1.5,
+    "MPEG-4": 1.5,
+    "VC-1": 1,
+    "VP8": 1.2,
+    "H.264": 1
+  },
+  "family_anchors": {
+    "H.264(Baseline)": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 512
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 1500
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2500
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 5000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 10000
+      }
+    ],
+    "4K264": [
+      {
+        "width": 3840,
+        "height": 2160,
+        "fps": 30.0,
+        "video_bitrate_kbps": 25000
+      },
+      {
+        "width": 4096,
+        "height": 2160,
+        "fps": 30.0,
+        "video_bitrate_kbps": 25000
+      }
+    ],
+    "H.265": [
+      {
+        "width": 480,
+        "height": 320,
+        "fps": 30.0,
+        "video_bitrate_kbps": 768
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 900
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 1000
+      },
+      {
+        "width": 854,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 1500
+      },
+      {
+        "width": 960,
+        "height": 640,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2500
+      },
+      {
+        "width": 1024,
+        "height": 600,
+        "fps": 30.0,
+        "video_bitrate_kbps": 3000
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 4000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 8000
+      }
+    ],
+    "MJPEG": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 4000
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 8000
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 10000
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 30000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 50000
+      }
+    ],
+    "MPEG-1": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 1500
+      }
+    ],
+    "MPEG-2": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2000
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 4000
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 6000
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 10000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 20000
+      }
+    ],
+    "H.263": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 768
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2000
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 3000
+      }
+    ],
+    "MPEG-4": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 512
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2000
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2500
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 5000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 10000
+      }
+    ],
+    "WMV9/VC-1": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 768
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2000
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2500
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 4000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 8000
+      }
+    ],
+    "H.264(Main)": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 512
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 1200
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2000
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 4000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 8000
+      }
+    ],
+    "FLV1": [
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 6000
+      }
+    ],
+    "VP8": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 768
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2000
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 3000
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 7000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 12000
+      }
+    ],
+    "WMV": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 768
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2000
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2500
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 5000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 10000
+      }
+    ],
+    "QuickTime": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 768
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2000
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 2500
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 5000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 8000
+      }
+    ],
+    "DNxHD": [
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 60000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 75000
+      }
+    ],
+    "CineForm": [
+      {
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "video_bitrate_kbps": 30000
+      },
+      {
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 60000
+      },
+      {
+        "width": 720,
+        "height": 480,
+        "fps": 30.0,
+        "video_bitrate_kbps": 100000
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "fps": 30.0,
+        "video_bitrate_kbps": 1300000
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "video_bitrate_kbps": 150000
+      },
+      {
+        "width": 3840,
+        "height": 2160,
+        "fps": 30.0,
+        "video_bitrate_kbps": 200000
+      },
+      {
+        "width": 4096,
+        "height": 2160,
+        "fps": 30.0,
+        "video_bitrate_kbps": 250000
+      }
+    ]
+  }
+}

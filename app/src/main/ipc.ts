@@ -1,0 +1,355 @@
+/** Handlers de IPC: tudo que o renderer pode pedir ao processo principal. */
+
+import { BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { basename } from "node:path";
+
+import { availableEncoders, resolveBinaries, type Binaries } from "../engine/binaries";
+import { buildCommand, commandToString } from "../engine/command";
+import { linkProfile, type PresetDatabase } from "../engine/data";
+import { decidePassthrough } from "../engine/passthrough";
+import type { ProbeResult } from "../engine/probe";
+import { resolvePreset, type UserChoices } from "../engine/resolver";
+import { ConversionQueue, buildOutputPath, type QueueItem } from "./queue";
+import { readPreferences, writePreferences } from "./preferences";
+import type {
+  BatchSettingsPayload,
+  BatchSummary,
+  ChoiceOptions,
+  EnvironmentInfo,
+  Option,
+  Preferences,
+  PresetGroup,
+  PresetListItem,
+  ResolveRequestPayload,
+  ResolveResponse,
+  UiQueueItem,
+  UiSourceInfo,
+} from "./ipc-types";
+
+/**
+ * Ordem de exibicao das categorias: o que o usuario mais usa primeiro.
+ * 7 Video · 1 Devices · 9 Web Sharing · 4 HD &3D · 5 Editing · 8 Audio · 10 Image
+ */
+const CATEGORY_ORDER = [7, 1, 9, 4, 5, 8, 10, 200];
+
+const MEDIA_EXTENSIONS = [
+  "mp4", "mov", "m4v", "mkv", "avi", "wmv", "flv", "webm", "mpg", "mpeg",
+  "ts", "m2ts", "mts", "vob", "3gp", "3g2", "ogv", "asf", "mxf", "dv", "f4v",
+  "mp3", "aac", "m4a", "wav", "flac", "ogg", "wma", "ac3", "aiff", "ape", "caf",
+];
+
+export interface IpcContext {
+  db: PresetDatabase;
+  window: BrowserWindow;
+}
+
+let binaries: Binaries | null = null;
+let encoders = new Set<string>();
+let queue: ConversionQueue | null = null;
+
+// --------------------------------------------------------------------------- //
+// conversoes de formato para a UI
+
+function numberOptions(values: number[] | undefined, suffix = ""): Option<number>[] {
+  return (values ?? []).map((value) => ({ value, label: `${value}${suffix}` }));
+}
+
+function encoderOptions(
+  db: PresetDatabase,
+  fourccs: string[] | undefined,
+  kind: "video" | "audio",
+): Option<string>[] {
+  return (fourccs ?? []).map((fourcc) => {
+    const entry = kind === "video" ? db.codecMap.video[fourcc] : db.codecMap.audio[fourcc];
+    const encoder = entry?.encoder ?? "nao suportado";
+    const flag = entry?.confidence === "low" ? " ⚠" : "";
+    return { value: fourcc, label: `${fourcc} — ${encoder}${flag}` };
+  });
+}
+
+function resolutionOptions(values: string[] | undefined): Option<string>[] {
+  return (values ?? []).map((value) => {
+    const [w, h] = value.split("*");
+    return { value, label: `${w} × ${h}` };
+  });
+}
+
+function toUiSource(probe: ProbeResult): UiSourceInfo {
+  return { ...probe, fileName: basename(probe.path) };
+}
+
+function toUiItem(item: QueueItem): UiQueueItem {
+  return {
+    id: item.id,
+    path: item.path,
+    fileName: item.fileName,
+    status: item.status,
+    source: item.probe ? toUiSource(item.probe) : null,
+    ...(item.probeError ? { probeError: item.probeError } : {}),
+    ...(item.outputPath ? { outputPath: item.outputPath } : {}),
+    ...(item.error ? { error: item.error } : {}),
+    ...(item.elapsedSeconds != null ? { elapsedSeconds: item.elapsedSeconds } : {}),
+    progress: item.progress ?? null,
+  };
+}
+
+function buildPresetGroups(db: PresetDatabase): PresetGroup[] {
+  const categoryTitles = new Map(db.categories.map((c) => [c.id, c.title]));
+  const buckets = new Map<number, PresetListItem[]>();
+
+  for (const profile of db.profiles) {
+    const link = linkProfile(db, profile);
+    // sem formato ligado sao todos presets de dispositivo (ver linkProfile)
+    const categoryId = link.format?.category_id ?? 1;
+
+    const item: PresetListItem = {
+      profileId: profile.id,
+      title: profile.title,
+      container: link.container,
+      videoEncoder: profile.video_encoder ?? null,
+      audioEncoder: profile.audio_encoder ?? null,
+      resolutionLabel: profile.resolution
+        ? `${profile.resolution.width}×${profile.resolution.height}`
+        : null,
+      linkPath: link.path,
+    };
+
+    const bucket = buckets.get(categoryId);
+    if (bucket) bucket.push(item);
+    else buckets.set(categoryId, [item]);
+  }
+
+  return [...buckets.entries()]
+    .map(([categoryId, items]) => ({
+      categoryId,
+      categoryTitle: categoryTitles.get(categoryId) ?? `Categoria ${categoryId}`,
+      items: items.sort((a, b) => a.title.localeCompare(b.title, "pt-BR")),
+    }))
+    .sort((a, b) => {
+      const rankA = CATEGORY_ORDER.indexOf(a.categoryId);
+      const rankB = CATEGORY_ORDER.indexOf(b.categoryId);
+      if (rankA !== rankB) {
+        return (rankA < 0 ? 99 : rankA) - (rankB < 0 ? 99 : rankB);
+      }
+      return a.categoryTitle.localeCompare(b.categoryTitle, "pt-BR");
+    });
+}
+
+/** Aceita a forma parcial que vem da UI, descartando chaves indefinidas. */
+function toEngineOverrides(overrides: Partial<UserChoices> | undefined): Partial<UserChoices> {
+  if (!overrides) return {};
+  const out: Partial<UserChoices> = {};
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value !== undefined) (out as Record<string, unknown>)[key] = value;
+  }
+  return out;
+}
+
+// --------------------------------------------------------------------------- //
+
+function handleResolve(
+  db: PresetDatabase,
+  payload: ResolveRequestPayload,
+  outputDir: string | null,
+): ResolveResponse {
+  const item = payload.itemId
+    ? queue?.list().find((entry) => entry.id === payload.itemId)
+    : undefined;
+  const source: ProbeResult | undefined = item?.probe;
+
+  const resolved = resolvePreset(db, {
+    profileId: payload.profileId,
+    overrides: toEngineOverrides(payload.overrides),
+    ...(source ? { source } : {}),
+  });
+
+  const passthrough =
+    payload.allowPassthrough === false
+      ? null
+      : decidePassthrough(db.passthrough, resolved.container, resolved.choices, source);
+
+  const inputPath = item?.path ?? "/caminho/do/arquivo-de-entrada";
+  const outputPath = item
+    ? buildOutputPath(item.path, resolved.container, outputDir)
+    : `/caminho/da/saida${resolved.container}`;
+
+  const built = buildCommand(db.codecMap, resolved, {
+    inputPath,
+    outputPath,
+    preferHardware: payload.preferHardware === true,
+    fitMode: payload.fitMode ?? "fit",
+    ...(passthrough ? { passthrough } : {}),
+    ...(source ? { source } : {}),
+    availableEncoders: encoders,
+  });
+
+  const options: ChoiceOptions = {
+    videoEncoders: encoderOptions(db, resolved.constraints.video_encoders?.allowed, "video"),
+    audioEncoders: encoderOptions(db, resolved.constraints.audio_encoders?.allowed, "audio"),
+    resolutions: resolutionOptions(resolved.constraints.resolution?.allowed),
+    frameRates: numberOptions(resolved.constraints.frame_rate?.allowed, " fps"),
+    videoBitrates: numberOptions(resolved.constraints.video_bitrate_kbps?.allowed, " kbps"),
+    audioBitrates: numberOptions(resolved.constraints.audio_bitrate_kbps?.allowed, " kbps"),
+    sampleRates: numberOptions(resolved.constraints.sample_rate_hz?.allowed, " Hz"),
+    channels: numberOptions(resolved.constraints.channels?.allowed),
+  };
+
+  return {
+    profileTitle: resolved.profile?.title ?? null,
+    formatTitle: resolved.format?.title ?? null,
+    container: resolved.container,
+    linkPath: resolved.linkPath,
+    choices: resolved.choices,
+    options,
+    notes: resolved.notes,
+    passthrough,
+    appliedLimitCount: resolved.appliedLimits.length,
+    commandPreview: commandToString(binaries?.ffmpeg ?? "ffmpeg", built.args),
+    warnings: built.warnings,
+    outputPath,
+  };
+}
+
+// --------------------------------------------------------------------------- //
+
+export function registerIpc({ db, window }: IpcContext): void {
+  const send = (channel: string, payload: unknown): void => {
+    if (!window.isDestroyed()) window.webContents.send(channel, payload);
+  };
+
+  async function ensureQueue(): Promise<ConversionQueue> {
+    if (queue) return queue;
+    const active = await resolveBinaries();
+    binaries = active;
+    if (encoders.size === 0) encoders = await availableEncoders(active.ffmpeg);
+
+    queue = new ConversionQueue(
+      { db, ffmpegPath: active.ffmpeg, encoders },
+      {
+        onItemChanged: (item) => send("queue:item", toUiItem(item)),
+        onProgress: (itemId, progress) => send("queue:progress", { itemId, progress }),
+        onLog: (itemId, line) => send("queue:log", { itemId, line }),
+        onBatchDone: (summary: BatchSummary) => send("queue:batch-done", summary),
+      },
+    );
+    return queue;
+  }
+
+  // --- ambiente e preferencias ---------------------------------------------
+
+  ipcMain.handle("env:info", async (): Promise<EnvironmentInfo> => {
+    const active = await resolveBinaries();
+    binaries = active;
+    if (encoders.size === 0) encoders = await availableEncoders(active.ffmpeg);
+    return {
+      ffmpeg: active.ffmpeg,
+      ffprobe: active.ffprobe,
+      version: active.version,
+      dataDir: db.dataDir,
+      encoderCount: encoders.size,
+      hasVideoToolbox: encoders.has("h264_videotoolbox"),
+    };
+  });
+
+  ipcMain.handle("prefs:read", (): Preferences => readPreferences());
+  ipcMain.handle("prefs:write", (_event, patch: Partial<Preferences>): Preferences =>
+    writePreferences(patch),
+  );
+
+  // --- presets --------------------------------------------------------------
+
+  ipcMain.handle("presets:list", (): PresetGroup[] => buildPresetGroups(db));
+
+  ipcMain.handle("preset:resolve", (_event, payload: ResolveRequestPayload): ResolveResponse =>
+    handleResolve(db, payload, payload.outputDir ?? null),
+  );
+
+  // --- fila -----------------------------------------------------------------
+
+  ipcMain.handle("queue:list", async (): Promise<UiQueueItem[]> => {
+    const active = await ensureQueue();
+    return active.list().map(toUiItem);
+  });
+
+  ipcMain.handle("queue:add-paths", async (_event, paths: string[]): Promise<UiQueueItem[]> => {
+    const active = await ensureQueue();
+    await active.add(paths);
+    return active.list().map(toUiItem);
+  });
+
+  ipcMain.handle("queue:add-dialog", async (): Promise<UiQueueItem[]> => {
+    const active = await ensureQueue();
+    const result = await dialog.showOpenDialog(window, {
+      properties: ["openFile", "multiSelections"],
+      title: "Escolha os arquivos",
+      filters: [
+        { name: "Mídia", extensions: MEDIA_EXTENSIONS },
+        { name: "Todos os arquivos", extensions: ["*"] },
+      ],
+    });
+    if (!result.canceled && result.filePaths.length > 0) {
+      await active.add(result.filePaths);
+    }
+    return active.list().map(toUiItem);
+  });
+
+  ipcMain.handle("queue:remove", async (_event, id: string): Promise<UiQueueItem[]> => {
+    const active = await ensureQueue();
+    active.remove(id);
+    return active.list().map(toUiItem);
+  });
+
+  ipcMain.handle("queue:clear", async (): Promise<UiQueueItem[]> => {
+    const active = await ensureQueue();
+    active.clear();
+    return active.list().map(toUiItem);
+  });
+
+  ipcMain.handle("queue:clear-finished", async (): Promise<UiQueueItem[]> => {
+    const active = await ensureQueue();
+    active.clearFinished();
+    return active.list().map(toUiItem);
+  });
+
+  ipcMain.handle("queue:start", async (_event, settings: BatchSettingsPayload): Promise<void> => {
+    const active = await ensureQueue();
+    // nao esperamos: o progresso chega pelos eventos
+    void active.start({
+      profileId: settings.profileId,
+      overrides: toEngineOverrides(settings.overrides),
+      preferHardware: settings.preferHardware === true,
+      fitMode: settings.fitMode ?? "fit",
+      allowPassthrough: settings.allowPassthrough !== false,
+      outputDir: settings.outputDir ?? null,
+    });
+  });
+
+  ipcMain.handle("queue:cancel-item", async (_event, id: string): Promise<boolean> => {
+    const active = await ensureQueue();
+    return active.cancelItem(id);
+  });
+
+  ipcMain.handle("queue:cancel-all", async (): Promise<void> => {
+    const active = await ensureQueue();
+    active.cancelAll();
+  });
+
+  // --- sistema --------------------------------------------------------------
+
+  ipcMain.handle("dir:pick", async (): Promise<string | null> => {
+    const result = await dialog.showOpenDialog(window, {
+      properties: ["openDirectory", "createDirectory"],
+      title: "Onde salvar",
+    });
+    return result.canceled ? null : (result.filePaths[0] ?? null);
+  });
+
+  ipcMain.handle("shell:reveal", (_event, path: string): void => {
+    shell.showItemInFolder(path);
+  });
+}
+
+/** Chamado ao fechar o app: nao deixa ffmpeg orfao rodando. */
+export function shutdownQueue(): void {
+  queue?.cancelAll();
+}

@@ -1,0 +1,12 @@
+# dependências e artefatos de build
+node_modules/
+dist/
+dist-test/
+release/
+build/icon.iconset/
+
+# clone de ferramenta externa (tem o próprio repositório)
+rea/
+
+# macOS
+.DS_Store

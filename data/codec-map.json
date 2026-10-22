@@ -1,0 +1,640 @@
+{
+  "_note": "FourCC observados em Format.pro; mapeamento para FFmpeg e decisao de design nossa. Ver 'confidence' em cada entrada.",
+  "video": {
+    "AMV": {
+      "family": "amv",
+      "encoder": "amv",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "players MP4 chineses antigos"
+    },
+    "AV1": {
+      "family": "av1",
+      "encoder": "libsvtav1",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high",
+      "note": "libsvtav1 e o mais rapido; libaom-av1 comprime um pouco melhor"
+    },
+    "AVHD": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [
+        "-profile:v",
+        "high",
+        "-level",
+        "4.1"
+      ],
+      "confidence": "medium",
+      "note": "AVCHD: H.264 em m2ts, com restricoes de profile"
+    },
+    "BDAV": {
+      "family": "mpeg2",
+      "encoder": "mpeg2video",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "low",
+      "note": "Blu-ray AV; pode ser H.264 tambem"
+    },
+    "CFHD": {
+      "family": "cineform",
+      "encoder": "cfhd",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high",
+      "note": "GoPro CineForm"
+    },
+    "DIVX": {
+      "family": "mpeg4",
+      "encoder": "mpeg4",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-vtag",
+        "DIVX"
+      ],
+      "confidence": "high"
+    },
+    "DV50": {
+      "family": "dv",
+      "encoder": "dvvideo",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "DVCPRO50"
+    },
+    "DV60": {
+      "family": "dv",
+      "encoder": "dvvideo",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "DVCPRO50 60i"
+    },
+    "FAVC": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "F = backend FFmpeg"
+    },
+    "FFV1": {
+      "family": "ffv1",
+      "encoder": "ffv1",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-level",
+        "3"
+      ],
+      "confidence": "high",
+      "note": "lossless"
+    },
+    "GIFA": {
+      "family": "gif",
+      "encoder": "gif",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high",
+      "note": "GIF animado"
+    },
+    "GIFV": {
+      "family": "gif",
+      "encoder": "gif",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "GIF de video"
+    },
+    "H100": {
+      "family": "dv",
+      "encoder": "dvvideo",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "low",
+      "note": "provavel DVCPRO HD 100"
+    },
+    "H263": {
+      "family": "h263",
+      "encoder": "h263p",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high",
+      "note": "h263p aceita mais resolucoes que h263"
+    },
+    "H264": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "H50": {
+      "family": "dv",
+      "encoder": "dvvideo",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "low",
+      "note": "provavel DVCPRO50"
+    },
+    "HAVC": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "H = caminho de hardware"
+    },
+    "HEVC": {
+      "family": "hevc",
+      "encoder": "libx265",
+      "encoder_hw_macos": "hevc_videotoolbox",
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "HMP2": {
+      "family": "mpeg2",
+      "encoder": "mpeg2video",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "MPEG-2 por hardware"
+    },
+    "IAVC": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "I = Intel QuickSync"
+    },
+    "IM4V": {
+      "family": "mpeg4",
+      "encoder": "mpeg4",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-vtag",
+        "DX50"
+      ],
+      "confidence": "medium",
+      "note": "MPEG-4 via Intel"
+    },
+    "IPAN": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "low",
+      "note": "provavel Intel"
+    },
+    "IPON": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "low",
+      "note": "provavel Intel"
+    },
+    "JPG": {
+      "family": "mjpeg",
+      "encoder": "mjpeg",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high",
+      "note": "sequencia de imagens"
+    },
+    "K264": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "motor interno, perfil 4K"
+    },
+    "K265": {
+      "family": "hevc",
+      "encoder": "libx265",
+      "encoder_hw_macos": "hevc_videotoolbox",
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "motor interno"
+    },
+    "M264": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "high",
+      "note": "default do MP4 deles"
+    },
+    "MAVC": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "medium"
+    },
+    "MJPG": {
+      "family": "mjpeg",
+      "encoder": "mjpeg",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "MP2V": {
+      "family": "mpeg2",
+      "encoder": "mpeg2video",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "MP4V": {
+      "family": "mpeg4",
+      "encoder": "mpeg4",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-vtag",
+        "DX50"
+      ],
+      "confidence": "high",
+      "note": "MPEG-4 Part 2"
+    },
+    "MPON": {
+      "family": "?",
+      "encoder": null,
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "low",
+      "note": "nao resolvido"
+    },
+    "OGV": {
+      "family": "theora",
+      "encoder": "libtheora",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "PAVC": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "low"
+    },
+    "PNG": {
+      "family": "png",
+      "encoder": "png",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high",
+      "note": "sequencia de imagens"
+    },
+    "PS3H": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "low",
+      "note": "preset PlayStation 3"
+    },
+    "RAWV": {
+      "family": "rawvideo",
+      "encoder": "rawvideo",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "VP8": {
+      "family": "vp8",
+      "encoder": "libvpx",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "VP9": {
+      "family": "vp9",
+      "encoder": "libvpx-vp9",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "WEBP": {
+      "family": "webp",
+      "encoder": "libwebp",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "WMV2": {
+      "family": "wmv2",
+      "encoder": "wmv2",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "X264": {
+      "family": "h264",
+      "encoder": "libx264",
+      "encoder_hw_macos": "h264_videotoolbox",
+      "extra_args": [],
+      "confidence": "high",
+      "note": "x264 explicito"
+    },
+    "Xvid": {
+      "family": "mpeg4",
+      "encoder": "mpeg4",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-vtag",
+        "XVID"
+      ],
+      "confidence": "high"
+    },
+    "ap4h": {
+      "family": "prores",
+      "encoder": "prores_ks",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-profile:v",
+        "4"
+      ],
+      "confidence": "high",
+      "note": "ProRes 4444"
+    },
+    "ap4x": {
+      "family": "prores",
+      "encoder": "prores_ks",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-profile:v",
+        "5"
+      ],
+      "confidence": "high",
+      "note": "ProRes 4444 XQ"
+    },
+    "apch": {
+      "family": "prores",
+      "encoder": "prores_ks",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-profile:v",
+        "3"
+      ],
+      "confidence": "high",
+      "note": "ProRes 422 HQ"
+    },
+    "apcn": {
+      "family": "prores",
+      "encoder": "prores_ks",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-profile:v",
+        "2"
+      ],
+      "confidence": "high",
+      "note": "ProRes 422"
+    },
+    "apco": {
+      "family": "prores",
+      "encoder": "prores_ks",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-profile:v",
+        "0"
+      ],
+      "confidence": "high",
+      "note": "ProRes 422 Proxy"
+    },
+    "apcs": {
+      "family": "prores",
+      "encoder": "prores_ks",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-profile:v",
+        "1"
+      ],
+      "confidence": "high",
+      "note": "ProRes 422 LT"
+    },
+    "flv1": {
+      "family": "flv1",
+      "encoder": "flv",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high",
+      "note": "Sorenson Spark"
+    },
+    "mp1v": {
+      "family": "mpeg1",
+      "encoder": "mpeg1video",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "mp2v": {
+      "family": "mpeg2",
+      "encoder": "mpeg2video",
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "mp43": {
+      "family": "mpeg4",
+      "encoder": "mpeg4",
+      "encoder_hw_macos": null,
+      "extra_args": [
+        "-vtag",
+        "MP43"
+      ],
+      "confidence": "medium",
+      "note": "MS MPEG-4 v3"
+    },
+    "qtv5": {
+      "family": "?",
+      "encoder": null,
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "low",
+      "note": "provavel Sorenson Video 3 / QT legado"
+    },
+    "qtv6": {
+      "family": "?",
+      "encoder": null,
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "low",
+      "note": "nao resolvido"
+    },
+    "qtv7": {
+      "family": "?",
+      "encoder": null,
+      "encoder_hw_macos": null,
+      "extra_args": [],
+      "confidence": "low",
+      "note": "nao resolvido"
+    }
+  },
+  "audio": {
+    "AAC": {
+      "family": "aac",
+      "encoder": "aac",
+      "extra_args": [],
+      "confidence": "high",
+      "note": "aac_at (AudioToolbox) soa melhor no macOS"
+    },
+    "AC3": {
+      "family": "ac3",
+      "encoder": "ac3",
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "ADPV": {
+      "family": "adpcm",
+      "encoder": "adpcm_ima_wav",
+      "extra_args": [],
+      "confidence": "low",
+      "note": "variante de ADPCM nao confirmada"
+    },
+    "ALAC": {
+      "family": "alac",
+      "encoder": "alac",
+      "extra_args": [],
+      "confidence": "high",
+      "note": "lossless"
+    },
+    "AMRN": {
+      "family": "amr_nb",
+      "encoder": "libopencore_amrnb",
+      "extra_args": [
+        "-ar",
+        "8000",
+        "-ac",
+        "1"
+      ],
+      "confidence": "high",
+      "note": "AMR-NB exige 8 kHz mono"
+    },
+    "APCM": {
+      "family": "pcm",
+      "encoder": "pcm_s16le",
+      "extra_args": [],
+      "confidence": "medium"
+    },
+    "APE": {
+      "family": "ape",
+      "encoder": null,
+      "extra_args": [],
+      "confidence": "high",
+      "note": "FFmpeg DECODIFICA ape mas nao codifica"
+    },
+    "DPCM": {
+      "family": "pcm",
+      "encoder": "pcm_s16be",
+      "extra_args": [],
+      "confidence": "low",
+      "note": "provavel PCM big-endian"
+    },
+    "MAAC": {
+      "family": "aac",
+      "encoder": "aac",
+      "extra_args": [],
+      "confidence": "high",
+      "note": "default do MP4 deles"
+    },
+    "MP2A": {
+      "family": "mp2",
+      "encoder": "mp2",
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "MP3": {
+      "family": "mp3",
+      "encoder": "libmp3lame",
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "OGG": {
+      "family": "vorbis",
+      "encoder": "libvorbis",
+      "extra_args": [],
+      "confidence": "medium",
+      "note": "OGG e container; o codec e Vorbis"
+    },
+    "OPUS": {
+      "family": "opus",
+      "encoder": "libopus",
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "PCM": {
+      "family": "pcm",
+      "encoder": "pcm_s16le",
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "VBIS": {
+      "family": "vorbis",
+      "encoder": "libvorbis",
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "caf": {
+      "family": "?",
+      "encoder": null,
+      "extra_args": [],
+      "confidence": "low",
+      "note": "CAF e container, nao codec"
+    },
+    "eAAC": {
+      "family": "aac",
+      "encoder": "libfdk_aac",
+      "extra_args": [
+        "-profile:a",
+        "aac_he_v2"
+      ],
+      "confidence": "low",
+      "note": "HE-AAC v2; exige FFmpeg com libfdk_aac (nao-free)"
+    },
+    "flac": {
+      "family": "flac",
+      "encoder": "flac",
+      "extra_args": [],
+      "confidence": "high",
+      "note": "lossless"
+    },
+    "fmp3": {
+      "family": "mp3",
+      "encoder": "libmp3lame",
+      "extra_args": [],
+      "confidence": "high",
+      "note": "mp3 via FFmpeg"
+    },
+    "in24": {
+      "family": "pcm",
+      "encoder": "pcm_s24le",
+      "extra_args": [],
+      "confidence": "high",
+      "note": "FourCC Apple para PCM 24 bits"
+    },
+    "qta0": {
+      "family": "?",
+      "encoder": null,
+      "extra_args": [],
+      "confidence": "low",
+      "note": "nao resolvido"
+    },
+    "wma1": {
+      "family": "wmav1",
+      "encoder": "wmav1",
+      "extra_args": [],
+      "confidence": "high"
+    },
+    "wma2": {
+      "family": "wmav2",
+      "encoder": "wmav2",
+      "extra_args": [],
+      "confidence": "high"
+    }
+  }
+}
