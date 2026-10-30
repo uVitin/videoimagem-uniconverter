@@ -52,6 +52,14 @@ gh release create v0.2.0 release/*.dmg \
 Quem já tem o app instalado vê o aviso na próxima vez que abrir. Só funciona em quem já
 tem uma versão com esse aviso (a partir da 0.1.0 gerada depois desta mudança).
 
+## Identidade visual
+
+Logotipos e ícone saem do `.ai` oficial da marca (PDF por dentro): 
+`python3 tools/make-brand-assets.py "/caminho/logo_Video_Imagem.ai"` regenera
+`src/renderer/assets/*.png` e `build/icon.png` (depois `npm run icon` gera o `.icns`).
+Cores: azul-marinho `#2D4268`, vermelho `#C74345`, verde `#95BD5A`; a barra de progresso
+vai do vermelho ao verde, como o quadro do logotipo. Tema claro e escuro seguem o sistema.
+
 ## Comandos
 
 ```bash

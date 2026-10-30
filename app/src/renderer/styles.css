@@ -3,52 +3,60 @@
 :root {
   color-scheme: dark light;
 
-  --bg: #16181d;
-  --bg-panel: #1d2026;
-  --bg-sunken: #12141a;
-  --bg-hover: #262a33;
-  --bg-active: #2f3542;
+  /* marca: azul-marinho do logotipo, com o vermelho e o verde do quadro */
+  --brand-navy: #2d4268;
+  --brand-red: #c74345;
+  --brand-green: #95bd5a;
 
-  --fg: #e8eaf0;
-  --fg-muted: #9aa1b1;
-  --fg-faint: #6b7283;
+  --bg: #121829;
+  --bg-panel: #182036;
+  --bg-sunken: #0e1322;
+  --bg-hover: #212b45;
+  --bg-active: #2a3657;
 
-  --border: #2b2f3a;
-  --border-strong: #3a404e;
+  --fg: #ecf0f8;
+  --fg-muted: #a3adc4;
+  --fg-faint: #7782a0;
 
-  --accent: #4d9fff;
-  --accent-fg: #06121f;
-  --warn: #ffb224;
-  --danger: #ff5c5c;
-  --ok: #3ddc84;
+  --border: #26304b;
+  --border-strong: #36425f;
 
-  --radius: 10px;
-  --radius-sm: 6px;
+  --accent: #7f9be0;
+  --accent-fg: #0b1226;
+  --warn: #f0b44c;
+  --danger: #e2605f;
+  --ok: #9bc866;
+
+  --radius: 12px;
+  --radius-sm: 8px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f4f5f8;
+    --bg: #f3f5fa;
     --bg-panel: #ffffff;
-    --bg-sunken: #eceef3;
-    --bg-hover: #e8ebf1;
-    --bg-active: #dde2ec;
+    --bg-sunken: #eaedf5;
+    --bg-hover: #e3e8f3;
+    --bg-active: #d6ddee;
 
-    --fg: #1b1e26;
-    --fg-muted: #5b6474;
-    --fg-faint: #8c94a4;
+    --fg: #1c2740;
+    --fg-muted: #54607b;
+    --fg-faint: #8791a8;
 
-    --border: #dfe3eb;
-    --border-strong: #c6ccd8;
+    --border: #dde2ee;
+    --border-strong: #c3cbdd;
 
-    --accent: #0a66d0;
+    --accent: #2d4268;
     --accent-fg: #ffffff;
     --warn: #9a5b00;
-    --danger: #c22b2b;
-    --ok: #1a7f4b;
+    --danger: #c74345;
+    --ok: #3f7a3a;
   }
 }
+
+/* logotipo e marca trocam com o tema */
+.logo-picture img, .mark-picture img { display: block; width: 100%; height: auto; }
 
 * { box-sizing: border-box; }
 
@@ -88,6 +96,9 @@ body {
 /* a barra de titulo some (hiddenInset): reserva o espaco dos botoes do macOS */
 .sidebar-drag { flex: 0 0 48px; -webkit-app-region: drag; }
 
+.brand { padding: 0 6px 16px; }
+.brand img { width: 138px; }
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -106,6 +117,7 @@ body {
 .nav-item:hover { background: var(--bg-hover); color: var(--fg); }
 .nav-item.active { background: var(--bg-panel); color: var(--fg); box-shadow: 0 0 0 1px var(--border); }
 .nav-item.active .nav-icon { color: var(--accent); }
+.nav-item.active { box-shadow: inset 3px 0 0 var(--brand-red), 0 0 0 1px var(--border); }
 .nav-icon { width: 18px; text-align: center; font-size: 15px; color: var(--fg-faint); }
 
 .nav-badge {
@@ -145,6 +157,20 @@ body {
   overflow-wrap: anywhere;
 }
 .env.error { color: var(--danger); }
+.version-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg-faint);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.version-btn:hover { background: var(--bg-hover); color: var(--fg); }
 
 .content { min-width: 0; min-height: 0; display: flex; padding: 12px; }
 
@@ -196,10 +222,61 @@ body {
 
 .export-row { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; }
 .export-label { color: var(--fg-muted); font-weight: 500; }
-.export-row select { width: 100%; }
+.export-row select { width: 100%; padding: 8px 10px; font: 13px/1.4 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
 
 .export-hint { margin: 0; min-height: 1em; font-size: 11px; color: var(--fg-faint); }
 .export-hint:empty { display: none; }
+
+/* ------------------------------- dropzone ------------------------------- */
+
+.dropzone {
+  flex: 0 0 auto;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  transition: border-color 0.15s, background 0.15s;
+}
+.dropzone.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg-sunken)); }
+.dropzone:has(ul.queue:not([hidden])) { border-style: solid; border-width: 1px; border-color: var(--border); }
+
+.dropzone-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 30px 16px;
+  color: var(--fg-faint);
+  text-align: center;
+}
+.dropzone-empty .mark-picture { width: 64px; margin-bottom: 8px; opacity: 0.95; }
+.dropzone-empty strong { color: var(--fg); font-size: 15px; font-weight: 600; }
+.dropzone-empty span { font-size: 12px; }
+.dropzone.over .dropzone-empty strong { color: var(--accent); }
+
+ul.queue { padding: 4px; }
+
+/* ------------------------------ ajustes --------------------------------- */
+
+.advanced {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.advanced > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--fg-muted);
+  list-style: none;
+}
+.advanced > summary::-webkit-details-marker { display: none; }
+.advanced > summary::before { content: "▸"; color: var(--fg-faint); transition: transform 0.15s; }
+.advanced[open] > summary::before { transform: rotate(90deg); }
+.advanced > summary:hover { color: var(--fg); }
+.advanced-body { display: flex; flex-direction: column; gap: 12px; padding: 4px 14px 14px; }
+.target-title { margin-left: auto; font: 11px/1.4 var(--mono); font-weight: 400; color: var(--fg-faint); }
 
 /* -------------------------------- fila ---------------------------------- */
 
@@ -249,6 +326,8 @@ ul.queue {
 }
 .queue-item.running .queue-status { background: var(--accent); color: var(--accent-fg); }
 .queue-item.done .queue-status { background: var(--ok); color: var(--accent-fg); }
+.queue-item.done .queue-status { animation: pop 0.35s ease-out; }
+@keyframes pop { 0% { transform: scale(0.4); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
 .queue-item.failed .queue-status { background: var(--danger); color: #fff; }
 
 .queue-body { min-width: 0; display: grid; gap: 2px; }
@@ -359,7 +438,7 @@ select:disabled { opacity: 0.45; }
   background: var(--bg-sunken);
   font-size: 12px;
 }
-.note .note-field { font: 11px/1.5 var(--mono); color: var(--fg-faint); }
+.note .note-field { font-weight: 600; color: var(--fg-muted); }
 .note.info { border-left-color: var(--accent); }
 .note.adjusted { border-left-color: var(--warn); }
 .note.warning { border-left-color: var(--danger); }
@@ -416,6 +495,7 @@ select:disabled { opacity: 0.45; }
 
 .bar {
   flex: 1 1 auto;
+  container-type: inline-size;
   height: 6px;
   border-radius: 999px;
   background: var(--bg-active);
@@ -425,7 +505,8 @@ select:disabled { opacity: 0.45; }
   height: 100%;
   width: 0;
   border-radius: 999px;
-  background: var(--accent);
+  background: linear-gradient(90deg, var(--brand-red), var(--brand-green));
+  background-size: 100cqw 100%;
   transition: width 0.2s linear;
 }
 .fill.indeterminate {
@@ -466,6 +547,8 @@ select:disabled { opacity: 0.45; }
 .btn.ghost { background: transparent; }
 
 .btn.small { padding: 4px 10px; font-size: 12px; }
+.btn.large { padding: 11px 30px; font-size: 14px; font-weight: 600; border-radius: 10px; }
+.btn.primary:disabled { opacity: 0.35; }
 
 /* ------------------------------ downloader ------------------------------ */
 
@@ -520,7 +603,8 @@ select:disabled { opacity: 0.45; }
   color: var(--fg-faint);
   text-align: center;
 }
-.dl-empty strong { color: var(--fg-muted); font-size: 14px; }
+.dl-empty .mark-picture { width: 72px; margin-bottom: 10px; }
+.dl-empty strong { color: var(--fg); font-size: 15px; }
 .dl-empty span { font-size: 12px; }
 
 ul.download-list { max-height: none; }
@@ -618,3 +702,11 @@ dialog.dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
 .dd-subs select { min-width: 150px; }
 .dd-none { margin: 0; font-size: 12px; color: var(--fg-faint); }
 .dd-remember { font-size: 12px; color: var(--fg-muted); }
+
+/* --------------------------------- sobre -------------------------------- */
+
+.about { display: grid; justify-items: center; gap: 6px; padding: 8px 0 4px; text-align: center; }
+.about .logo-picture { width: 220px; margin-bottom: 8px; }
+.about-version { font-weight: 600; font-size: 14px; }
+.about-detail { font: 11px/1.6 var(--mono); color: var(--fg-faint); user-select: text; }
+.about-status { min-height: 1.4em; font-size: 12px; color: var(--fg-muted); }

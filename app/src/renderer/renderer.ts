@@ -206,6 +206,7 @@ interface Preferences {
 }
 
 interface EnvironmentInfo {
+  appVersion: string;
   ffmpeg: string;
   ffprobe: string;
   version: string;
@@ -309,6 +310,11 @@ const dom = {
   log: el("log"),
   ytdlpMissing: el("ytdlp-missing"),
   ytdlpUpdate: el<HTMLButtonElement>("ytdlp-update"),
+  aboutDialog: el<HTMLDialogElement>("about-dialog"),
+  aboutVersion: el("about-version"),
+  aboutDetail: el("about-detail"),
+  aboutStatus: el("about-status"),
+  aboutCheck: el<HTMLButtonElement>("about-check"),
   updateBanner: el("update-banner"),
   updateTitle: el("update-title"),
   updateSub: el("update-sub"),
@@ -774,7 +780,39 @@ function fillSelect(field: ChoiceField, options: Option<string | number>[], curr
   }
 }
 
-function showNote(severity: Severity | "ok", field: string, message: string): void {
+const FIELD_LABELS: Record<string, string> = {
+  videoEncoder: "Codec de vídeo",
+  audioEncoder: "Codec de áudio",
+  resolution: "Resolução",
+  frameRate: "Taxa de quadros",
+  videoBitrateKbps: "Bitrate de vídeo",
+  audioBitrateKbps: "Bitrate de áudio",
+  sampleRateHz: "Sample rate",
+  channels: "Canais",
+  container: "Formato",
+};
+
+/** Troca o texto de engenheiro das notas do resolver por uma frase para quem usa o app. */
+function friendlyNote(field: string, message: string): { label: string; text: string } {
+  const label = FIELD_LABELS[field] ?? field;
+  const named = /^'(.+)' nao e aceito aqui; usando '(.+)'\./.exec(message);
+  if (named) {
+    return { label, text: `${named[1]} não é compatível com este formato. Usei ${named[2]}.` };
+  }
+  const nearest = /^(.+) nao e aceito aqui; usando o mais proximo, (.+)$/.exec(message);
+  if (nearest) {
+    return { label, text: `${nearest[1]} não é compatível com este formato. Usei o mais próximo: ${nearest[2]}.` };
+  }
+  const plain = /^(.+) nao e aceito aqui; usando (.+)$/.exec(message);
+  if (plain) {
+    return { label, text: `${plain[1]} não é compatível com este formato. Usei ${plain[2]}.` };
+  }
+  return { label, text: message };
+}
+
+function showNote(severity: Severity | "ok", rawField: string, rawMessage: string): void {
+  const { label: fieldLabel, text: message } = friendlyNote(rawField, rawMessage);
+  const field = fieldLabel;
   const div = document.createElement("div");
   div.className = `note ${severity}`;
   const label = document.createElement("span");
@@ -1500,6 +1538,33 @@ async function initDownloads(): Promise<void> {
 // --------------------------------------------------------------------------- //
 
 function wireEvents(): void {
+  dom.env.addEventListener("click", () => {
+    dom.aboutStatus.textContent = "";
+    dom.aboutDialog.showModal();
+  });
+  for (const id of ["about-close", "about-ok"]) {
+    el(id).addEventListener("click", () => dom.aboutDialog.close());
+  }
+  let aboutUpdateUrl: string | null = null;
+  dom.aboutCheck.addEventListener("click", async () => {
+    if (aboutUpdateUrl) {
+      void api.openUpdatePage(aboutUpdateUrl);
+      return;
+    }
+    dom.aboutCheck.disabled = true;
+    dom.aboutStatus.textContent = "Procurando…";
+    try {
+      const info = await api.checkAppUpdate();
+      if (info.error) dom.aboutStatus.textContent = "Não consegui verificar agora (sem internet?).";
+      else if (info.available && info.url) {
+        dom.aboutStatus.textContent = `Versão ${info.latest} disponível.`;
+        dom.aboutCheck.textContent = "Baixar";
+        aboutUpdateUrl = info.url;
+      } else dom.aboutStatus.textContent = "Você está na versão mais nova. ✓";
+    } finally {
+      dom.aboutCheck.disabled = false;
+    }
+  });
   dom.ytdlpUpdate.addEventListener("click", () => void checkYtDlpUpdate());
   dom.updateDismiss.addEventListener("click", () => {
     dom.updateBanner.hidden = true;
@@ -1694,12 +1759,14 @@ async function boot(): Promise<void> {
 
   try {
     const env = await api.getEnvironment();
-    dom.env.textContent = [
-      env.version.replace(/^ffmpeg version /, ""),
-      `${env.encoderCount} encoders`,
-      env.hasVideoToolbox ? "VideoToolbox ✓" : "VideoToolbox ✗",
-    ].join("  ·  ");
-    dom.env.title = `${env.ffmpeg}\n${env.ffprobe}\ndata: ${env.dataDir}`;
+    dom.env.textContent = `Versão ${env.appVersion}`;
+    dom.env.title = "Sobre o app";
+    dom.aboutVersion.textContent = `VideoImagem Downloader ${env.appVersion}`;
+    dom.aboutDetail.textContent = [
+      env.version.replace(/^ffmpeg version /, "ffmpeg ").split("  ")[0],
+      `${env.encoderCount} encoders · VideoToolbox ${env.hasVideoToolbox ? "sim" : "não"}`,
+    ].join("\n");
+    dom.aboutDetail.title = `${env.ffmpeg}\n${env.ffprobe}\ndata: ${env.dataDir}`;
   } catch (error) {
     dom.env.classList.add("error");
     dom.env.textContent = describeError(error);

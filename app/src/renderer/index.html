@@ -14,6 +14,12 @@
       <!-- ------------------------------ menu ------------------------------- -->
       <nav class="sidebar" aria-label="Seções">
         <div class="sidebar-drag"></div>
+        <div class="brand">
+          <picture class="logo-picture">
+            <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png" />
+            <img src="assets/logo-light.png" alt="VideoImagem" />
+          </picture>
+        </div>
 
         <button type="button" class="nav-item active" data-view="converter" id="nav-converter">
           <span class="nav-icon" aria-hidden="true">⇄</span>
@@ -32,7 +38,7 @@
             <span id="update-sub"></span>
             <button type="button" class="btn small primary" id="update-open">Baixar</button>
           </div>
-          <div class="env" id="env">verificando ambiente…</div>
+          <button type="button" class="version-btn" id="env" title="Sobre o app">VideoImagem Downloader</button>
         </div>
       </nav>
 
@@ -58,8 +64,12 @@
 
             <div class="dropzone" id="dropzone">
               <div class="dropzone-empty" id="dropzone-empty">
-                <strong>Arraste arquivos aqui</strong>
-                <span>pode ser vários de uma vez</span>
+                <picture class="mark-picture">
+            <source media="(prefers-color-scheme: dark)" srcset="assets/mark-dark.png" />
+            <img src="assets/mark-light.png" alt="" />
+          </picture>
+                <strong>Arraste os vídeos aqui</strong>
+                <span>ou clique em “Adicionar…” · pode ser vários de uma vez</span>
               </div>
               <ul class="queue" id="queue" hidden></ul>
             </div>
@@ -81,9 +91,12 @@
 
             <!-- ajustes -->
             <div class="settings" id="settings" hidden>
-              <div class="section-head">
-                <h2 id="target-title">—</h2>
-                <div class="toggles">
+              <div class="notes" id="notes"></div>
+
+              <details class="advanced" id="advanced">
+                <summary>Ajustes avançados <span class="target-title" id="target-title">—</span></summary>
+                <div class="advanced-body">
+                  <div class="toggles">
                   <label class="toggle">
                     <input type="checkbox" id="prefer-hardware" />
                     <span>Aceleração por hardware</span>
@@ -97,9 +110,8 @@
                     <span>Limpar a fila ao terminar</span>
                   </label>
                 </div>
-              </div>
 
-              <div class="groups">
+                  <div class="groups">
                 <fieldset class="group">
                   <legend>Vídeo</legend>
                   <label>Codec <select id="videoEncoder"></select></label>
@@ -124,11 +136,11 @@
                 </fieldset>
               </div>
 
-              <div class="notes" id="notes"></div>
-
-              <details class="command">
+                  <details class="command">
                 <summary>Comando ffmpeg</summary>
                 <pre id="command-preview"></pre>
+              </details>
+                </div>
               </details>
 
               <div class="output">
@@ -147,7 +159,7 @@
                 <span class="progress-text" id="progress-text"></span>
               </div>
               <div class="actions">
-                <button type="button" class="btn primary" id="convert" disabled>Converter</button>
+                <button type="button" class="btn primary large" id="convert" disabled>Converter</button>
                 <button type="button" class="btn danger" id="cancel-all" hidden>Cancelar tudo</button>
               </div>
             </div>
@@ -188,6 +200,10 @@
             <div class="notes" id="ytdlp-missing" hidden></div>
 
             <div class="dl-empty" id="download-empty">
+              <picture class="mark-picture">
+            <source media="(prefers-color-scheme: dark)" srcset="assets/mark-dark.png" />
+            <img src="assets/mark-light.png" alt="" />
+          </picture>
               <strong id="download-empty-title">Nenhum download em andamento</strong>
               <span id="download-empty-hint">Cole o link de um vídeo acima para começar.</span>
             </div>
@@ -272,6 +288,29 @@
       <footer class="dialog-foot">
         <button type="button" class="btn ghost" id="dd-cancel">Cancelar</button>
         <button type="button" class="btn primary" id="dd-go">Baixar</button>
+      </footer>
+    </dialog>
+
+    <!-- ============================ sobre o app ============================ -->
+    <dialog class="dialog" id="about-dialog" aria-labelledby="about-version">
+      <header class="dialog-head">
+        <h2>Sobre</h2>
+        <button type="button" class="icon-btn" id="about-close" aria-label="Fechar">×</button>
+      </header>
+      <div class="dialog-body">
+        <div class="about">
+          <picture class="logo-picture">
+            <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png" />
+            <img src="assets/logo-light.png" alt="VideoImagem" />
+          </picture>
+          <div class="about-version" id="about-version">VideoImagem Downloader</div>
+          <div class="about-detail" id="about-detail"></div>
+          <div class="about-status" id="about-status"></div>
+        </div>
+      </div>
+      <footer class="dialog-foot">
+        <button type="button" class="btn ghost" id="about-check">Buscar atualização</button>
+        <button type="button" class="btn primary" id="about-ok">Fechar</button>
       </footer>
     </dialog>
 

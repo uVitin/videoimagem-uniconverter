@@ -445,6 +445,7 @@ export function registerIpc({ db, window }: IpcContext): void {
     binaries = active;
     if (encoders.size === 0) encoders = await availableEncoders(active.ffmpeg);
     return {
+      appVersion: app.getVersion(),
       ffmpeg: active.ffmpeg,
       ffprobe: active.ffprobe,
       version: active.version,

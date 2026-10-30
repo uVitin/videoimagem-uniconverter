@@ -1,6 +1,6 @@
 {
   "name": "videoimagem-uniconverter",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Conversor de video — engine FFmpeg + UI Electron",
   "main": "dist/main/main.js",
   "private": true,

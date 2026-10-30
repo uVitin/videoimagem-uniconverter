@@ -9,4 +9,5 @@ await mkdir(out, { recursive: true });
 for (const file of ["index.html", "styles.css"]) {
   await cp(join(root, "src", "renderer", file), join(out, file));
 }
+await cp(join(root, "src", "renderer", "assets"), join(out, "assets"), { recursive: true });
 console.log("static -> dist/renderer");

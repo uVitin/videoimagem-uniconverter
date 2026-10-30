@@ -287,6 +287,7 @@ export interface YtDlpUpdateInfo {
 }
 
 export interface EnvironmentInfo {
+  appVersion: string;
   ffmpeg: string;
   ffprobe: string;
   version: string;
