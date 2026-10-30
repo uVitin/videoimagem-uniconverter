@@ -114,11 +114,13 @@ export interface ResolveRequestPayload {
   profileId: number | null;
   /** obrigatorio quando profileId e null */
   formatId?: number | null;
+  /** "Igual a origem": so vale junto com formatId */
+  matchSource?: boolean;
   overrides?: Partial<UiChoices>;
   /** item da fila contra o qual fazer a previa; null = previa generica */
   itemId?: string | null;
   preferHardware?: boolean;
-  fitMode?: "fit" | "fill" | "stretch";
+  fitMode?: FitModeName;
   allowPassthrough?: boolean;
   outputDir?: string | null;
 }
@@ -168,9 +170,10 @@ export interface BatchSummary {
 export interface BatchSettingsPayload {
   profileId: number | null;
   formatId?: number | null;
+  matchSource?: boolean;
   overrides?: Partial<UiChoices>;
   preferHardware?: boolean;
-  fitMode?: "fit" | "fill" | "stretch";
+  fitMode?: FitModeName;
   allowPassthrough?: boolean;
   outputDir?: string | null;
 }
@@ -178,10 +181,13 @@ export interface BatchSettingsPayload {
 export interface Preferences {
   lastProfileId: number | null;
   lastFormatId: number | null;
+  /** novo seletor: extensao do formato e id da predefinicao */
+  lastContainer: string | null;
+  lastTarget: string | null;
   outputDir: string | null;
   preferHardware: boolean;
   allowPassthrough: boolean;
-  fitMode: "fit" | "fill" | "stretch";
+  fitMode: FitModeName;
   clearFinishedOnDone: boolean;
   /** onde salvar os downloads; null = pasta Downloads do sistema */
   downloadDir: string | null;
@@ -285,6 +291,10 @@ export interface YtDlpUpdateInfo {
   from: string;
   to: string;
 }
+
+export type FitModeName = "contain" | "bars" | "fill" | "stretch";
+
+export type { TargetGroup, TargetContainer, TargetPreset } from "../engine/targets";
 
 export interface EnvironmentInfo {
   appVersion: string;

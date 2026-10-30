@@ -104,6 +104,8 @@ describe("conversao de ponta a ponta", () => {
     const built = buildCommand(db.codecMap, resolved, {
       inputPath: samplePath,
       outputPath,
+      // tamanho exato pedido: o padrao ("sem barras") deixaria o quadro menor
+      fitMode: "bars",
       availableEncoders: encoders,
     });
     assert.equal(built.videoEncoder, "libx264");

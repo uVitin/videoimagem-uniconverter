@@ -28,6 +28,15 @@ export VIDEOIMAGEM_FFPROBE=/caminho/para/ffprobe
 export VIDEOIMAGEM_YTDLP=/caminho/para/yt-dlp
 ```
 
+## Converter: formato e predefinição
+
+O seletor funciona em dois passos, como no Premiere: **Formato** (um por extensão: MP4, MOV,
+MKV, MP3…) e depois **Predefinição**. A primeira predefinição é **"Igual à origem"**: mantém
+tamanho, proporção e taxa de quadros do arquivo (vídeo vertical continua vertical, sem barras
+pretas). Depois vêm as variantes do formato, redes e web, edição e dispositivos.
+Presets com tamanho fixo viram o quadro quando o vídeo é vertical, e o encaixe padrão é
+"sem barras" (barras, corte e esticar ficam em Ajustes avançados). Código: `src/engine/targets.ts`.
+
 ## Atualizações
 
 - **O app avisa de versão nova.** Ao abrir, consulta a última Release pública do GitHub
@@ -65,7 +74,7 @@ vai do vermelho ao verde, como o quadro do logotipo. Tema claro e escuro seguem 
 ```bash
 npm install
 npm start     # build + abre o app
-npm test      # 105 testes, inclui conversões reais
+npm test      # 120 testes, inclui conversões reais
 npm run build # só compila
 npm run pack  # empacota sem gerar instalador (release/mac/)
 npm run dist  # gera os DMG (x64 + arm64) em release/

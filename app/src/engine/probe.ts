@@ -18,6 +18,8 @@ interface FfprobeStream {
   sample_rate?: string;
   channels?: number;
   bit_rate?: string;
+  tags?: { rotate?: string };
+  side_data_list?: Array<{ rotation?: number }>;
 }
 
 interface FfprobeOutput {
@@ -34,6 +36,22 @@ export interface ProbeResult extends SourceInfo {
   audioChannels?: number;
   hasVideo: boolean;
   hasAudio: boolean;
+}
+
+/**
+ * Largura/altura como o ffmpeg entrega o video depois do autorotate: celular
+ * grava 1920x1080 com marca de rotacao 90 e o resultado e 1080x1920.
+ */
+export function displayDimensions(
+  stream: Pick<FfprobeStream, "width" | "height" | "tags" | "side_data_list">,
+): { width: number; height: number } | null {
+  if (!stream.width || !stream.height) return null;
+  const raw = stream.side_data_list?.find((d) => typeof d.rotation === "number")?.rotation
+    ?? Number(stream.tags?.rotate);
+  const quarter = Number.isFinite(raw) ? Math.round(Math.abs(raw as number) / 90) % 2 === 1 : false;
+  return quarter
+    ? { width: stream.height, height: stream.width }
+    : { width: stream.width, height: stream.height };
 }
 
 /** "30000/1001" -> 29.97. Devolve null para "0/0". */
@@ -86,8 +104,11 @@ export async function probeFile(path: string): Promise<ProbeResult> {
   if (Number.isFinite(size) && size > 0) result.sizeBytes = size;
 
   if (video) {
-    if (video.width) result.width = video.width;
-    if (video.height) result.height = video.height;
+    const dims = displayDimensions(video);
+    if (dims) {
+      result.width = dims.width;
+      result.height = dims.height;
+    }
     if (video.codec_name) result.videoCodec = video.codec_name;
     const fps = parseRate(video.avg_frame_rate) ?? parseRate(video.r_frame_rate);
     if (fps) result.frameRate = fps;

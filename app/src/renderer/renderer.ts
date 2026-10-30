@@ -7,7 +7,7 @@
 
 type Severity = "info" | "adjusted" | "warning";
 type QueueStatus = "pending" | "running" | "done" | "failed" | "canceled";
-type FitMode = "fit" | "fill" | "stretch";
+type FitMode = "contain" | "bars" | "fill" | "stretch";
 
 interface Option<T> { value: T; label: string; }
 
@@ -31,6 +31,12 @@ interface FormatListItem {
   presetCount: number;
 }
 
+interface TargetPreset {
+  id: string; label: string; group: string;
+  formatId: number | null; profileId: number | null; matchSource: boolean; detail: string | null;
+}
+interface TargetContainer { key: string; title: string; kind: string; primaryFormatId: number; presets: TargetPreset[]; }
+interface TargetGroup { kind: string; label: string; containers: TargetContainer[]; }
 interface FormatGroup { categoryId: number; categoryTitle: string; items: FormatListItem[]; }
 
 interface PresetGroup { categoryId: number; categoryTitle: string; items: PresetListItem[]; }
@@ -117,6 +123,7 @@ interface ResolveResponse {
 interface ResolveRequestPayload {
   profileId: number | null;
   formatId?: number | null;
+  matchSource?: boolean;
   overrides?: Partial<UiChoices>;
   itemId?: string | null;
   preferHardware?: boolean;
@@ -128,6 +135,7 @@ interface ResolveRequestPayload {
 interface BatchSettingsPayload {
   profileId: number | null;
   formatId?: number | null;
+  matchSource?: boolean;
   overrides?: Partial<UiChoices>;
   preferHardware?: boolean;
   fitMode?: FitMode;
@@ -191,6 +199,8 @@ interface YtDlpInfo { available: boolean; path?: string; version?: string; hint?
 interface Preferences {
   lastProfileId: number | null;
   lastFormatId: number | null;
+  lastContainer: string | null;
+  lastTarget: string | null;
   outputDir: string | null;
   preferHardware: boolean;
   allowPassthrough: boolean;
@@ -221,6 +231,7 @@ interface VideoimagemApi {
   writePreferences(patch: Partial<Preferences>): Promise<Preferences>;
   listPresets(): Promise<PresetGroup[]>;
   listFormats(): Promise<FormatGroup[]>;
+  listTargets(): Promise<TargetGroup[]>;
   resolvePreset(payload: ResolveRequestPayload): Promise<ResolveResponse>;
   listQueue(): Promise<UiQueueItem[]>;
   addFilesDialog(): Promise<UiQueueItem[]>;
@@ -386,12 +397,10 @@ const STATUS_LABEL: Record<QueueStatus, string> = {
 // --------------------------------------------------------------------------- //
 
 interface State {
-  groups: PresetGroup[];
-  formatGroups: FormatGroup[];
-  /** formato escolhido; DEVICES_FORMAT = so presets de dispositivos sem formato */
-  selectedFormatId: number | null;
-  /** null = "Personalizado": padroes do formato, sem preset */
-  selectedPresetId: number | null;
+  targets: TargetGroup[];
+  /** extensao do formato escolhido (".mp4") */
+  selectedContainer: string | null;
+  selectedTarget: TargetPreset | null;
   items: UiQueueItem[];
   /** item cujos metadados alimentam a previa dos ajustes */
   focusedItemId: string | null;
@@ -404,10 +413,9 @@ interface State {
 }
 
 const state: State = {
-  groups: [],
-  formatGroups: [],
-  selectedFormatId: null,
-  selectedPresetId: null,
+  targets: [],
+  selectedContainer: null,
+  selectedTarget: null,
   items: [],
   focusedItemId: null,
   outputDir: null,
@@ -469,131 +477,115 @@ function describeError(error: unknown): string {
 // --------------------------------------------------------------------------- //
 // formato e predefinicao (o "Format / Preset" do Premiere)
 
-/** presets de dispositivos que o banco original nao liga a nenhum formato */
-const DEVICES_FORMAT = -1;
-
-const CATEGORY_LABEL: Record<number, string> = {
-  7: "Vídeo", 8: "Áudio", 5: "Edição", 4: "HD e 3D", 9: "Web",
-  10: "Imagem e GIF", 1: "Dispositivos", 200: "Personalizado",
-};
-
-function extensionLabel(extension: string): string {
-  return extension.replace(".", "").toLowerCase();
+function allContainers(): TargetContainer[] {
+  return state.targets.flatMap((group) => group.containers);
 }
 
-function formatLabel(item: FormatListItem): string {
-  const ext = extensionLabel(item.extension);
-  return item.title.toLowerCase() === ext ? `${item.title}` : `${item.title} — .${ext}`;
-}
-
-function presetsForFormat(formatId: number | null): PresetListItem[] {
-  if (formatId == null) return [];
-  const wanted = formatId === DEVICES_FORMAT ? null : formatId;
-  const out: PresetListItem[] = [];
-  for (const group of state.groups) {
-    for (const item of group.items) {
-      if (item.formatId === wanted) out.push(item);
-    }
-  }
-  return out.sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+function currentContainer(): TargetContainer | undefined {
+  return allContainers().find((c) => c.key === state.selectedContainer);
 }
 
 function hasTarget(): boolean {
-  if (state.selectedPresetId != null) return true;
-  return state.selectedFormatId != null && state.selectedFormatId !== DEVICES_FORMAT;
+  return state.selectedTarget != null;
 }
 
-/** O que a engine precisa saber do alvo: um preset, ou so o formato. */
-function targetPayload(): { profileId: number | null; formatId: number | null } {
-  return state.selectedPresetId != null
-    ? { profileId: state.selectedPresetId, formatId: null }
-    : { profileId: null, formatId: state.selectedFormatId };
+/** O que a engine precisa saber do alvo: um preset, ou o formato (com "igual a origem"). */
+function targetPayload(): { profileId: number | null; formatId: number | null; matchSource: boolean } {
+  const target = state.selectedTarget;
+  if (!target) return { profileId: null, formatId: null, matchSource: false };
+  return target.profileId != null
+    ? { profileId: target.profileId, formatId: null, matchSource: false }
+    : { profileId: null, formatId: target.formatId, matchSource: target.matchSource };
 }
 
 function renderFormatSelect(): void {
   dom.formatSelect.textContent = "";
-  const seen = new Map<string, number>();
 
-  for (const group of state.formatGroups) {
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Escolha o formato…";
+  placeholder.disabled = true;
+  dom.formatSelect.append(placeholder);
+
+  for (const group of state.targets) {
     const optgroup = document.createElement("optgroup");
-    optgroup.label = CATEGORY_LABEL[group.categoryId] ?? group.categoryTitle;
-
-    for (const item of group.items) {
-      let label = formatLabel(item);
-      // o banco tem formatos de mesmo nome (dois "MP4"): numera para distinguir
-      const times = (seen.get(label) ?? 0) + 1;
-      seen.set(label, times);
-      if (times > 1) label += ` (${times})`;
-
+    optgroup.label = group.label;
+    for (const container of group.containers) {
+      const ext = container.key.replace(".", "");
       const option = document.createElement("option");
-      option.value = String(item.formatId);
-      option.textContent = label;
-      optgroup.append(option);
-    }
-
-    // os presets sem formato entram no fim de Dispositivos
-    if (group.categoryId === 1 && presetsForFormat(DEVICES_FORMAT).length > 0) {
-      const option = document.createElement("option");
-      option.value = String(DEVICES_FORMAT);
-      option.textContent = "Outros dispositivos";
+      option.value = container.key;
+      option.textContent =
+        container.title.toLowerCase() === ext ? container.title : `${container.title} — .${ext}`;
       optgroup.append(option);
     }
     dom.formatSelect.append(optgroup);
   }
 
-  if (state.selectedFormatId != null) dom.formatSelect.value = String(state.selectedFormatId);
+  dom.formatSelect.value = state.selectedContainer ?? "";
+  dom.formatSelect.disabled = state.running;
 }
 
 function renderPresetSelect(): void {
   dom.presetSelect.textContent = "";
-  const presets = presetsForFormat(state.selectedFormatId);
-  const deviceOnly = state.selectedFormatId === DEVICES_FORMAT;
+  const container = currentContainer();
 
-  if (!deviceOnly) {
-    const custom = document.createElement("option");
-    custom.value = "";
-    custom.textContent = "Personalizado";
-    dom.presetSelect.append(custom);
+  if (!container) {
+    const waiting = document.createElement("option");
+    waiting.textContent = "Escolha o formato primeiro";
+    dom.presetSelect.append(waiting);
+    dom.presetSelect.disabled = true;
+    dom.exportHint.textContent = "";
+    return;
   }
 
-  for (const item of presets) {
+  let optgroup: HTMLOptGroupElement | null = null;
+  let lastGroup = "";
+  for (const preset of container.presets) {
+    if (preset.group !== lastGroup) {
+      optgroup = document.createElement("optgroup");
+      optgroup.label = preset.group;
+      dom.presetSelect.append(optgroup);
+      lastGroup = preset.group;
+    }
     const option = document.createElement("option");
-    option.value = String(item.profileId);
-    option.textContent = [item.title, item.resolutionLabel].filter(Boolean).join(" · ");
-    dom.presetSelect.append(option);
+    option.value = preset.id;
+    option.textContent = [preset.label, preset.detail].filter(Boolean).join(" · ");
+    optgroup!.append(option);
   }
 
-  dom.presetSelect.value = state.selectedPresetId != null ? String(state.selectedPresetId) : "";
+  dom.presetSelect.value = state.selectedTarget?.id ?? "";
   dom.presetSelect.disabled = state.running;
 
-  dom.exportHint.textContent =
-    state.selectedPresetId != null
+  const count = container.presets.length - 1;
+  dom.exportHint.textContent = state.selectedTarget?.matchSource
+    ? "Mantém o tamanho, a proporção e a taxa de quadros do vídeo original (vertical continua vertical)."
+    : count > 0
       ? ""
-      : deviceOnly
-        ? "Escolha o aparelho em Predefinição."
-        : presets.length > 0
-          ? `${presets.length} predefinições para este formato. Em Personalizado você ajusta tudo abaixo.`
-          : "Sem predefinições para este formato: ajuste codec, resolução e bitrate abaixo.";
+      : "Sem outras predefinições para este formato: ajuste em “Ajustes avançados”.";
 }
 
-async function selectFormat(formatId: number, presetId: number | null = null): Promise<void> {
-  state.selectedFormatId = formatId;
-  // nos "Outros dispositivos" nao ha Personalizado: cai no primeiro aparelho
-  state.selectedPresetId =
-    presetId ?? (formatId === DEVICES_FORMAT ? (presetsForFormat(formatId)[0]?.profileId ?? null) : null);
+async function selectContainer(key: string, targetId: string | null = null): Promise<void> {
+  const container = allContainers().find((c) => c.key === key);
+  state.selectedContainer = container?.key ?? null;
+  // trocar de formato volta para a primeira predefinicao ("Igual a origem")
+  state.selectedTarget =
+    container?.presets.find((p) => p.id === targetId) ?? container?.presets[0] ?? null;
   state.overrides = {}; // trocar de formato/preset zera o que o usuario tinha mexido
 
-  dom.formatSelect.value = String(formatId);
+  dom.formatSelect.value = state.selectedContainer ?? "";
   renderPresetSelect();
-  void api.writePreferences({ lastFormatId: formatId, lastProfileId: state.selectedPresetId });
+  void api.writePreferences({
+    lastContainer: state.selectedContainer,
+    lastTarget: state.selectedTarget?.id ?? null,
+  });
   await refreshResolved();
 }
 
-async function selectPreset(profileId: number | null): Promise<void> {
-  state.selectedPresetId = profileId;
+async function selectTarget(id: string): Promise<void> {
+  state.selectedTarget = currentContainer()?.presets.find((p) => p.id === id) ?? null;
   state.overrides = {};
   renderPresetSelect();
-  void api.writePreferences({ lastProfileId: profileId });
+  void api.writePreferences({ lastTarget: state.selectedTarget?.id ?? null });
   await refreshResolved();
 }
 
@@ -756,9 +748,42 @@ async function focusItem(id: string): Promise<void> {
 // --------------------------------------------------------------------------- //
 // ajustes
 
-function fillSelect(field: ChoiceField, options: Option<string | number>[], current: unknown): void {
+const MATCH_FIELDS = new Set<ChoiceField>(["resolution", "frameRate", "videoBitrateKbps"]);
+
+/** "Igual a origem (1080 × 1920)": o que a engine decidiu a partir do arquivo em foco. */
+function matchLabel(field: ChoiceField, current: unknown): string {
+  if (field === "videoBitrateKbps") {
+    return current == null ? "Automático" : `Automático (${current} kbps)`;
+  }
+  if (current == null) return "Igual à origem";
+  if (field === "resolution") return `Igual à origem (${String(current).replace("*", " × ")})`;
+  return `Igual à origem (${current} fps)`;
+}
+
+function fillSelect(
+  field: ChoiceField,
+  options: Option<string | number>[],
+  current: unknown,
+  matching = false,
+): void {
   const select = el<HTMLSelectElement>(field);
   select.textContent = "";
+
+  if (matching && options.length > 0) {
+    const auto = document.createElement("option");
+    auto.value = "";
+    auto.textContent = matchLabel(field, current);
+    auto.selected = true;
+    select.append(auto);
+    select.disabled = state.running;
+    for (const entry of options) {
+      const option = document.createElement("option");
+      option.value = String(entry.value);
+      option.textContent = entry.label;
+      select.append(option);
+    }
+    return;
+  }
 
   if (options.length === 0) {
     // sem tabela de capacidades: mostra o valor cru para o usuario saber o que vai
@@ -875,7 +900,11 @@ async function refreshResolved(): Promise<void> {
       : "";
 
   for (const field of CHOICE_FIELDS) {
-    fillSelect(field, resolved.options[OPTION_KEY[field]], resolved.choices[field]);
+    const matching =
+      state.selectedTarget?.matchSource === true &&
+      MATCH_FIELDS.has(field) &&
+      state.overrides[field] === undefined;
+    fillSelect(field, resolved.options[OPTION_KEY[field]], resolved.choices[field], matching);
   }
 
   renderNotes(resolved);
@@ -1578,11 +1607,10 @@ function wireEvents(): void {
   dom.navDownloader.addEventListener("click", () => showView("downloader"));
 
   dom.formatSelect.addEventListener("change", () => {
-    void selectFormat(Number(dom.formatSelect.value));
+    if (dom.formatSelect.value) void selectContainer(dom.formatSelect.value);
   });
   dom.presetSelect.addEventListener("change", () => {
-    const value = dom.presetSelect.value;
-    void selectPreset(value === "" ? null : Number(value));
+    if (dom.presetSelect.value) void selectTarget(dom.presetSelect.value);
   });
 
   dom.addFiles.addEventListener("click", () => void refreshQueue(api.addFilesDialog()));
@@ -1607,8 +1635,8 @@ function wireEvents(): void {
   for (const field of CHOICE_FIELDS) {
     el<HTMLSelectElement>(field).addEventListener("change", async (event) => {
       const raw = (event.target as HTMLSelectElement).value;
-      (state.overrides as Record<string, unknown>)[field] =
-        NUMERIC_FIELDS.has(field) ? Number(raw) : raw;
+      if (raw === "") delete (state.overrides as Record<string, unknown>)[field]; // volta ao automatico
+      else (state.overrides as Record<string, unknown>)[field] = NUMERIC_FIELDS.has(field) ? Number(raw) : raw;
       await refreshResolved();
     });
   }
@@ -1726,32 +1754,15 @@ async function applyPreferences(): Promise<Preferences | null> {
   return prefs;
 }
 
-/** Volta ao ultimo formato/preset; sem historico, comeca em MP4. */
+/** Volta ao ultimo formato/predefinicao; sem historico, comeca em MP4 / Igual a origem. */
 async function restoreTarget(prefs: Preferences | null): Promise<void> {
-  const allFormats = state.formatGroups.flatMap((group) => group.items);
-  let formatId: number | null = null;
-  let presetId: number | null = null;
-
-  if (prefs?.lastProfileId != null) {
-    const preset = state.groups
-      .flatMap((group) => group.items)
-      .find((item) => item.profileId === prefs.lastProfileId);
-    if (preset) {
-      presetId = preset.profileId;
-      formatId = preset.formatId ?? DEVICES_FORMAT;
-    }
-  }
-
-  const known = (id: number): boolean =>
-    id === DEVICES_FORMAT ? presetsForFormat(DEVICES_FORMAT).length > 0 : allFormats.some((f) => f.formatId === id);
-
-  if (formatId == null && prefs?.lastFormatId != null && known(prefs.lastFormatId)) {
-    formatId = prefs.lastFormatId;
-  }
-  if (formatId == null) {
-    formatId = (allFormats.find((f) => f.title === "MP4") ?? allFormats[0])?.formatId ?? null;
-  }
-  if (formatId != null) await selectFormat(formatId, presetId);
+  const containers = allContainers();
+  const key =
+    (prefs?.lastContainer && containers.some((c) => c.key === prefs.lastContainer)
+      ? prefs.lastContainer
+      : null) ??
+    (containers.some((c) => c.key === ".mp4") ? ".mp4" : containers[0]?.key ?? null);
+  if (key) await selectContainer(key, prefs?.lastTarget ?? null);
 }
 
 async function boot(): Promise<void> {
@@ -1773,9 +1784,9 @@ async function boot(): Promise<void> {
   }
 
   try {
-    state.groups = await api.listPresets();
-    state.formatGroups = await api.listFormats();
+    state.targets = await api.listTargets();
     renderFormatSelect();
+    renderPresetSelect();
   } catch (error) {
     showNote("warning", "formatos", describeError(error));
   }

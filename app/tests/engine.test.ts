@@ -378,13 +378,15 @@ describe("construtor de comando", () => {
       formatId: mp4().id,
       overrides: { videoEncoder: "M264", resolution: "1280*720" },
     });
-    const vf = (mode: "fit" | "fill" | "stretch") => {
+    const vf = (mode: "contain" | "bars" | "fill" | "stretch") => {
       const built = buildCommand(db.codecMap, resolved, {
         inputPath: "/tmp/a.mov", outputPath: "/tmp/b.mp4", fitMode: mode,
       });
       return built.args[built.args.indexOf("-vf") + 1] ?? "";
     };
-    assert.match(vf("fit"), /force_original_aspect_ratio=decrease.*pad=/s);
+    assert.match(vf("bars"), /force_original_aspect_ratio=decrease.*pad=/s);
+    assert.doesNotMatch(vf("contain"), /pad=/);
+    assert.match(vf("contain"), /force_original_aspect_ratio=decrease/);
     assert.match(vf("fill"), /force_original_aspect_ratio=increase.*crop=/s);
     assert.ok(!vf("stretch").includes("force_original_aspect_ratio"));
   });

@@ -16,6 +16,7 @@ import type {
   ItemProgressEvent,
   Preferences,
   PresetGroup,
+  TargetGroup,
   ResolveRequestPayload,
   ResolveResponse,
   UiDownloadItem,
@@ -32,6 +33,7 @@ const api = {
     ipcRenderer.invoke("prefs:write", patch),
 
   listPresets: (): Promise<PresetGroup[]> => ipcRenderer.invoke("presets:list"),
+  listTargets: (): Promise<TargetGroup[]> => ipcRenderer.invoke("targets:list"),
   listFormats: (): Promise<FormatGroup[]> => ipcRenderer.invoke("formats:list"),
   resolvePreset: (payload: ResolveRequestPayload): Promise<ResolveResponse> =>
     ipcRenderer.invoke("preset:resolve", payload),

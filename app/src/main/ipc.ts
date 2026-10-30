@@ -6,6 +6,7 @@ import { basename, join } from "node:path";
 import { availableEncoders, resolveBinaries, type Binaries } from "../engine/binaries";
 import { buildCommand, commandToString } from "../engine/command";
 import { linkProfile, type PresetDatabase } from "../engine/data";
+import { buildTargets, UNSUPPORTED_EXTENSIONS } from "../engine/targets";
 import { decidePassthrough } from "../engine/passthrough";
 import type { ProbeResult } from "../engine/probe";
 import { resolvePreset, type UserChoices } from "../engine/resolver";
@@ -56,9 +57,6 @@ const CATEGORY_ORDER = [7, 1, 9, 4, 5, 8, 10, 200];
  * (documentos e vetores, ou containers sem muxer): oferecer seria prometer uma
  * conversao que sempre falha.
  */
-const UNSUPPORTED_EXTENSIONS = new Set([
-  ".pdf", ".psd", ".svg", ".eps", ".xpm", ".heic", ".swf", ".amv", ".ape",
-]);
 
 const MEDIA_EXTENSIONS = [
   "mp4", "mov", "m4v", "mkv", "avi", "wmv", "flv", "webm", "mpg", "mpeg",
@@ -276,6 +274,7 @@ function handleResolve(
     ...(payload.profileId != null
       ? { profileId: payload.profileId }
       : { formatId: payload.formatId as number }),
+    ...(payload.matchSource ? { matchSource: true } : {}),
     overrides: toEngineOverrides(payload.overrides),
     ...(source ? { source } : {}),
   });
@@ -294,7 +293,7 @@ function handleResolve(
     inputPath,
     outputPath,
     preferHardware: payload.preferHardware === true,
-    fitMode: payload.fitMode ?? "fit",
+    fitMode: payload.fitMode ?? "contain",
     ...(passthrough ? { passthrough } : {}),
     ...(source ? { source } : {}),
     availableEncoders: encoders,
@@ -463,6 +462,7 @@ export function registerIpc({ db, window }: IpcContext): void {
   // --- presets --------------------------------------------------------------
 
   ipcMain.handle("presets:list", (): PresetGroup[] => buildPresetGroups(db));
+  ipcMain.handle("targets:list", () => buildTargets(db));
   ipcMain.handle("formats:list", (): FormatGroup[] => buildFormatGroups(db));
 
   ipcMain.handle("preset:resolve", (_event, payload: ResolveRequestPayload): ResolveResponse =>
@@ -522,9 +522,10 @@ export function registerIpc({ db, window }: IpcContext): void {
     void active.start({
       ...(settings.profileId != null ? { profileId: settings.profileId } : {}),
       ...(settings.formatId != null ? { formatId: settings.formatId } : {}),
+      ...(settings.matchSource ? { matchSource: true } : {}),
       overrides: toEngineOverrides(settings.overrides),
       preferHardware: settings.preferHardware === true,
-      fitMode: settings.fitMode ?? "fit",
+      fitMode: settings.fitMode ?? "contain",
       allowPassthrough: settings.allowPassthrough !== false,
       outputDir: settings.outputDir ?? null,
     });

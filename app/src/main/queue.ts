@@ -43,7 +43,8 @@ export interface BatchSettings {
   formatId?: number | null;
   overrides?: Partial<UserChoices>;
   preferHardware?: boolean;
-  fitMode?: "fit" | "fill" | "stretch";
+  fitMode?: "contain" | "bars" | "fill" | "stretch";
+  matchSource?: boolean;
   allowPassthrough?: boolean;
   outputDir?: string | null;
 }
@@ -232,6 +233,7 @@ export class ConversionQueue {
           : settings.formatId != null
             ? { formatId: settings.formatId }
             : {}),
+        ...(settings.matchSource ? { matchSource: true } : {}),
         overrides: settings.overrides ?? {},
         ...(source ? { source } : {}),
       });
@@ -247,7 +249,7 @@ export class ConversionQueue {
         inputPath: item.path,
         outputPath,
         preferHardware: settings.preferHardware === true,
-        fitMode: settings.fitMode ?? "fit",
+        fitMode: settings.fitMode ?? "contain",
         ...(passthrough ? { passthrough } : {}),
         ...(source ? { source } : {}),
         availableEncoders: encoders,

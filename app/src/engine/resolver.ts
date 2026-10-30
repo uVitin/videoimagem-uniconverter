@@ -22,6 +22,9 @@ import type { Format, Limit, Profile, ValueSet } from "./types";
 
 const MAX_PASSES = 6;
 
+/** Formatos de tamanho fixo (TV/DVD/celular antigo): ali "igual a origem" nao vale. */
+const FIXED_SIZE_EXTENSIONS = new Set([".mpg", ".vob", ".dv", ".3gp", ".3g2", ".swf", ".amv"]);
+
 export interface UserChoices {
   /** FourCC; null = sem video (so audio) */
   videoEncoder: string | null;
@@ -62,6 +65,13 @@ export interface ResolveRequest {
   formatId?: number;
   overrides?: Partial<UserChoices>;
   source?: SourceInfo;
+  /**
+   * "Igual a origem": so com um formato (sem preset). Resolucao, taxa de quadros
+   * e bitrate vem do proprio arquivo em vez dos padroes do formato (640x480...),
+   * e a resolucao nao e encaixada na lista do formato -- video vertical continua
+   * vertical.
+   */
+  matchSource?: boolean;
 }
 
 export interface ResolvedPreset {
@@ -177,12 +187,13 @@ function snapNumber(
   valueSet: ValueSet<number> | undefined,
   pinnedByUser: boolean,
   notes: Note[],
+  keepNull = false,
 ): number | null {
   const allowed = allowedOf(valueSet);
   if (!allowed) return current;
   if (current != null && includesNumber(allowed, current)) return current;
 
-  if (current == null) return valueSet?.default ?? allowed[0]!;
+  if (current == null) return keepNull ? null : (valueSet?.default ?? allowed[0]!);
 
   const replacement = nearestAllowed(current, allowed);
   notes.push({
@@ -266,6 +277,15 @@ export function resolvePreset(db: PresetDatabase, request: ResolveRequest): Reso
   const pinned = new Set(Object.keys(overrides) as Array<keyof UserChoices>);
   const choices: UserChoices = { ...seedFromProfile(profile, format), ...overrides };
 
+  const matchSource =
+    request.matchSource === true && !profile && !FIXED_SIZE_EXTENSIONS.has(container.toLowerCase());
+  if (matchSource) {
+    // o que o usuario nao fixou vem do arquivo, nao dos padroes do formato
+    if (!pinned.has("resolution")) choices.resolution = null;
+    if (!pinned.has("frameRate")) choices.frameRate = null;
+    if (!pinned.has("videoBitrateKbps")) choices.videoBitrateKbps = null;
+  }
+
   // "igual a origem": preenche com o que o ffprobe achou
   const source = request.source;
   if (choices.resolution == null && source?.width && source?.height) {
@@ -297,12 +317,14 @@ export function resolvePreset(db: PresetDatabase, request: ResolveRequest): Reso
       "audioEncoder", choices.audioEncoder, constraints.audio_encoders,
       pinned.has("audioEncoder"), passNotes,
     );
-    choices.resolution = snapResolution(
-      choices.resolution, constraints.resolution, pinned.has("resolution"), passNotes,
-    );
+    if (!(matchSource && !pinned.has("resolution"))) {
+      choices.resolution = snapResolution(
+        choices.resolution, constraints.resolution, pinned.has("resolution"), passNotes,
+      );
+    }
     choices.frameRate = snapNumber(
       "frameRate", choices.frameRate, constraints.frame_rate,
-      pinned.has("frameRate"), passNotes,
+      pinned.has("frameRate"), passNotes, matchSource && !pinned.has("frameRate"),
     );
     choices.sampleRateHz = snapNumber(
       "sampleRateHz", choices.sampleRateHz, constraints.sample_rate_hz,
@@ -318,7 +340,7 @@ export function resolvePreset(db: PresetDatabase, request: ResolveRequest): Reso
     );
     choices.videoBitrateKbps = snapNumber(
       "videoBitrateKbps", choices.videoBitrateKbps, constraints.video_bitrate_kbps,
-      pinned.has("videoBitrateKbps"), passNotes,
+      pinned.has("videoBitrateKbps"), passNotes, matchSource && !pinned.has("videoBitrateKbps"),
     );
 
     // As notas tem de ser acumuladas a cada passagem: justamente a passagem
@@ -337,6 +359,25 @@ export function resolvePreset(db: PresetDatabase, request: ResolveRequest): Reso
           `as restricoes nao convergiram em ${MAX_PASSES} passes; ` +
           `a configuracao final pode nao ser otima`,
       });
+    }
+  }
+
+  // video vertical num preset horizontal (ou o inverso): vira o quadro do preset
+  // em vez de encher de barras. So quando o tamanho veio do preset, nao do usuario.
+  if (!matchSource && !pinned.has("resolution") && source?.width && source?.height) {
+    const target = parseResolution(choices.resolution);
+    if (target && target.width !== target.height) {
+      const sourcePortrait = source.height > source.width;
+      const targetPortrait = target.height > target.width;
+      const squarish = Math.abs(source.height - source.width) / Math.max(source.width, source.height) < 0.05;
+      if (!squarish && sourcePortrait !== targetPortrait && !targetPortrait) {
+        choices.resolution = formatResolution(target.height, target.width);
+        notes.push({
+          field: "resolution",
+          severity: "info",
+          message: `video na vertical: usei ${target.height}x${target.width} em vez de ${target.width}x${target.height}, sem barras`,
+        });
+      }
     }
   }
 

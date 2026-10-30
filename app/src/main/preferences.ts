@@ -14,10 +14,12 @@ import { isDownloadQuality, type DownloadQuality } from "../engine/ytdlp";
 export interface Preferences {
   lastProfileId: number | null;
   lastFormatId: number | null;
+  lastContainer: string | null;
+  lastTarget: string | null;
   outputDir: string | null;
   preferHardware: boolean;
   allowPassthrough: boolean;
-  fitMode: "fit" | "fill" | "stretch";
+  fitMode: "contain" | "bars" | "fill" | "stretch";
   /** tirar da lista o que ja converteu, assim que o lote termina */
   clearFinishedOnDone: boolean;
   /** onde salvar os downloads; null = pasta Downloads do sistema */
@@ -34,10 +36,12 @@ export interface Preferences {
 const DEFAULTS: Preferences = {
   lastProfileId: null,
   lastFormatId: null,
+  lastContainer: null,
+  lastTarget: null,
   outputDir: null,
   preferHardware: false,
   allowPassthrough: true,
-  fitMode: "fit",
+  fitMode: "contain",
   clearFinishedOnDone: false,
   downloadDir: null,
   downloadQuality: "best",
@@ -48,7 +52,8 @@ const DEFAULTS: Preferences = {
   downloadSubtitles: false,
 };
 
-const FIT_MODES = new Set(["fit", "fill", "stretch"]);
+// "fit" (versoes ate 0.2) vira o padrao novo: nao ha como saber se foi escolha ou padrao
+const FIT_MODES = new Set(["contain", "bars", "fill", "stretch"]);
 
 function filePath(): string {
   return join(app.getPath("userData"), "preferences.json");
@@ -62,6 +67,8 @@ function sanitize(raw: unknown): Preferences {
   return {
     lastProfileId:
       typeof input.lastProfileId === "number" ? input.lastProfileId : DEFAULTS.lastProfileId,
+    lastContainer: typeof input.lastContainer === "string" ? input.lastContainer : DEFAULTS.lastContainer,
+    lastTarget: typeof input.lastTarget === "string" ? input.lastTarget : DEFAULTS.lastTarget,
     lastFormatId:
       typeof input.lastFormatId === "number" ? input.lastFormatId : DEFAULTS.lastFormatId,
     outputDir: typeof input.outputDir === "string" ? input.outputDir : DEFAULTS.outputDir,

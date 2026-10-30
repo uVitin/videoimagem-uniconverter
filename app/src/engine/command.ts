@@ -11,8 +11,14 @@ import type { ProbeResult } from "./probe";
 import type { ResolvedPreset } from "./resolver";
 import type { CodecMap } from "./types";
 
-/** Como encaixar a imagem quando a proporcao da origem difere do alvo. */
-export type FitMode = "fit" | "fill" | "stretch";
+/**
+ * Como encaixar a imagem quando a proporcao da origem difere do alvo:
+ *   contain -- cabe inteiro, SEM barras (a saida pode ficar menor que o alvo)
+ *   bars    -- cabe inteiro e completa o quadro com barras pretas
+ *   fill    -- preenche o quadro e corta o excesso
+ *   stretch -- estica
+ */
+export type FitMode = "contain" | "bars" | "fill" | "stretch";
 
 export interface BuildOptions {
   inputPath: string;
@@ -64,13 +70,16 @@ function buildScaleFilter(
         `scale=${w}:${h}:force_original_aspect_ratio=increase:flags=lanczos,` +
         `crop=${w}:${h}`
       );
-    case "fit":
-    default:
+    case "bars":
       // cabe inteiro e completa com barras
       return (
         `scale=${w}:${h}:force_original_aspect_ratio=decrease:flags=lanczos,` +
         `pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2:color=black`
       );
+    case "contain":
+    default:
+      // mantem a proporcao e nao acrescenta nada; dimensoes pares para o x264
+      return `scale=${w}:${h}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos`;
   }
 }
 
@@ -157,7 +166,7 @@ export function buildCommand(
 
   const { choices, container } = resolved;
   const passthrough = options.passthrough;
-  const fitMode = options.fitMode ?? "fit";
+  const fitMode = options.fitMode ?? "contain";
 
   const args: string[] = ["-hide_banner", "-nostdin"];
   args.push(options.overwrite === false ? "-n" : "-y");
@@ -195,7 +204,14 @@ export function buildCommand(
       args.push(...picked.extraArgs);
 
       const dimensions = parseResolution(choices.resolution);
-      if (dimensions) {
+      const src = options.source;
+      const sameAsSource =
+        dimensions != null &&
+        src?.width === dimensions.width &&
+        src?.height === dimensions.height &&
+        dimensions.width % 2 === 0 &&
+        dimensions.height % 2 === 0;
+      if (dimensions && !sameAsSource) {
         args.push("-vf", buildScaleFilter(dimensions.width, dimensions.height, fitMode));
       }
       if (choices.frameRate != null) {
