@@ -158,6 +158,55 @@ export interface Preferences {
   allowPassthrough: boolean;
   fitMode: "fit" | "fill" | "stretch";
   clearFinishedOnDone: boolean;
+  /** onde salvar os downloads; null = pasta Downloads do sistema */
+  downloadDir: string | null;
+  downloadQuality: DownloadQuality;
+  sendDownloadsToQueue: boolean;
+}
+
+export type DownloadQuality = "best" | "2160" | "1440" | "1080" | "720" | "480" | "audio";
+
+export type DownloadStatus = "pending" | "analyzing" | "running" | "done" | "failed" | "canceled";
+
+export interface UiDownloadProgress {
+  fraction: number | null;
+  downloadedBytes: number;
+  totalBytes?: number;
+  speedBytesPerSec?: number;
+  etaSeconds?: number;
+  formatId?: string;
+}
+
+export interface UiDownloadItem {
+  id: string;
+  url: string;
+  title: string | null;
+  quality: DownloadQuality;
+  status: DownloadStatus;
+  outputPath?: string;
+  error?: string;
+  elapsedSeconds?: number;
+  progress: UiDownloadProgress | null;
+}
+
+export interface DownloadRequestPayload {
+  url: string;
+  quality: DownloadQuality;
+  addToConversionQueue: boolean;
+}
+
+export interface DownloadProgressEvent {
+  itemId: string;
+  progress: UiDownloadProgress;
+}
+
+/** ausente quando o yt-dlp nao esta instalado */
+export interface YtDlpInfo {
+  available: boolean;
+  path?: string;
+  version?: string;
+  /** o que fazer para resolver, quando indisponivel */
+  hint?: string;
 }
 
 export interface EnvironmentInfo {

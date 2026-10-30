@@ -1,6 +1,6 @@
 /** Handlers de IPC: tudo que o renderer pode pedir ao processo principal. */
 
-import { BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { basename } from "node:path";
 
 import { availableEncoders, resolveBinaries, type Binaries } from "../engine/binaries";
@@ -9,12 +9,15 @@ import { linkProfile, type PresetDatabase } from "../engine/data";
 import { decidePassthrough } from "../engine/passthrough";
 import type { ProbeResult } from "../engine/probe";
 import { resolvePreset, type UserChoices } from "../engine/resolver";
+import { isDownloadQuality, locateYtDlp } from "../engine/ytdlp";
+import { DownloadManager, type DownloadItem } from "./downloads";
 import { ConversionQueue, buildOutputPath, type QueueItem } from "./queue";
 import { readPreferences, writePreferences } from "./preferences";
 import type {
   BatchSettingsPayload,
   BatchSummary,
   ChoiceOptions,
+  DownloadRequestPayload,
   EnvironmentInfo,
   Option,
   Preferences,
@@ -22,8 +25,10 @@ import type {
   PresetListItem,
   ResolveRequestPayload,
   ResolveResponse,
+  UiDownloadItem,
   UiQueueItem,
   UiSourceInfo,
+  YtDlpInfo,
 } from "./ipc-types";
 
 /**
@@ -46,6 +51,7 @@ export interface IpcContext {
 let binaries: Binaries | null = null;
 let encoders = new Set<string>();
 let queue: ConversionQueue | null = null;
+let downloads: DownloadManager | null = null;
 
 // --------------------------------------------------------------------------- //
 // conversoes de formato para a UI
@@ -86,6 +92,20 @@ function toUiItem(item: QueueItem): UiQueueItem {
     status: item.status,
     source: item.probe ? toUiSource(item.probe) : null,
     ...(item.probeError ? { probeError: item.probeError } : {}),
+    ...(item.outputPath ? { outputPath: item.outputPath } : {}),
+    ...(item.error ? { error: item.error } : {}),
+    ...(item.elapsedSeconds != null ? { elapsedSeconds: item.elapsedSeconds } : {}),
+    progress: item.progress ?? null,
+  };
+}
+
+function toUiDownload(item: DownloadItem): UiDownloadItem {
+  return {
+    id: item.id,
+    url: item.url,
+    title: item.title ?? null,
+    quality: item.quality,
+    status: item.status,
     ...(item.outputPath ? { outputPath: item.outputPath } : {}),
     ...(item.error ? { error: item.error } : {}),
     ...(item.elapsedSeconds != null ? { elapsedSeconds: item.elapsedSeconds } : {}),
@@ -235,7 +255,50 @@ export function registerIpc({ db, window }: IpcContext): void {
     return queue;
   }
 
+  async function ensureDownloads(): Promise<DownloadManager> {
+    if (downloads) return downloads;
+    const ytdlp = await locateYtDlp(); // lanca com a dica de instalacao se faltar
+    let ffmpegPath: string | undefined;
+    try {
+      ffmpegPath = (binaries ?? (await resolveBinaries())).ffmpeg;
+    } catch {
+      // sem ffmpeg o yt-dlp ainda baixa arquivos que ja vem juntos
+    }
+
+    downloads = new DownloadManager(
+      { ytdlpPath: ytdlp.path, ...(ffmpegPath ? { ffmpegPath } : {}) },
+      {
+        onItemChanged: (item) => send("download:item", toUiDownload(item)),
+        onProgress: (itemId, progress) => send("download:progress", { itemId, progress }),
+        onLog: (itemId, line) => send("download:log", { itemId, line }),
+        onItemDone: (item) => {
+          if (!item.addToConversionQueue || !item.outputPath) return;
+          const path = item.outputPath;
+          void ensureQueue()
+            .then((active) => active.add([path]))
+            .then(() => send("queue:refresh", null))
+            .catch(() => {
+              // o arquivo ja foi baixado; so nao entrou na fila -- o usuario adiciona na mao
+            });
+        },
+      },
+    );
+    return downloads;
+  }
+
   // --- ambiente e preferencias ---------------------------------------------
+
+  ipcMain.handle("ytdlp:info", async (): Promise<YtDlpInfo> => {
+    try {
+      const found = await locateYtDlp();
+      return { available: true, path: found.path, version: found.version };
+    } catch (error) {
+      return {
+        available: false,
+        hint: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
 
   ipcMain.handle("env:info", async (): Promise<EnvironmentInfo> => {
     const active = await resolveBinaries();
@@ -334,6 +397,47 @@ export function registerIpc({ db, window }: IpcContext): void {
     active.cancelAll();
   });
 
+  // --- downloads ------------------------------------------------------------
+
+  ipcMain.handle("download:list", async (): Promise<UiDownloadItem[]> => {
+    // sem yt-dlp nao ha o que listar; a UI ja mostra o aviso de instalacao
+    if (!downloads) return [];
+    return downloads.list().map(toUiDownload);
+  });
+
+  ipcMain.handle(
+    "download:add",
+    async (_event, payload: DownloadRequestPayload): Promise<UiDownloadItem[]> => {
+      if (!isDownloadQuality(payload.quality)) throw new Error("qualidade invalida");
+      const active = await ensureDownloads();
+      const prefs = readPreferences();
+      active.add({
+        url: payload.url,
+        quality: payload.quality,
+        outputDir: prefs.downloadDir ?? app.getPath("downloads"),
+        addToConversionQueue: payload.addToConversionQueue === true,
+      });
+      return active.list().map(toUiDownload);
+    },
+  );
+
+  ipcMain.handle("download:cancel", (_event, id: string): boolean => downloads?.cancelItem(id) ?? false);
+  ipcMain.handle("download:cancel-all", (): void => downloads?.cancelAll());
+
+  ipcMain.handle("download:remove", (_event, id: string): UiDownloadItem[] => {
+    downloads?.remove(id);
+    return downloads?.list().map(toUiDownload) ?? [];
+  });
+
+  ipcMain.handle("download:clear-finished", (): UiDownloadItem[] => {
+    downloads?.clearFinished();
+    return downloads?.list().map(toUiDownload) ?? [];
+  });
+
+  ipcMain.handle("download:default-dir", (): string => {
+    return readPreferences().downloadDir ?? app.getPath("downloads");
+  });
+
   // --- sistema --------------------------------------------------------------
 
   ipcMain.handle("dir:pick", async (): Promise<string | null> => {
@@ -349,7 +453,8 @@ export function registerIpc({ db, window }: IpcContext): void {
   });
 }
 
-/** Chamado ao fechar o app: nao deixa ffmpeg orfao rodando. */
+/** Chamado ao fechar o app: nao deixa ffmpeg nem yt-dlp orfaos rodando. */
 export function shutdownQueue(): void {
   queue?.cancelAll();
+  downloads?.cancelAll();
 }

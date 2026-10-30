@@ -9,6 +9,8 @@ import { app } from "electron";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { isDownloadQuality, type DownloadQuality } from "../engine/ytdlp";
+
 export interface Preferences {
   lastProfileId: number | null;
   outputDir: string | null;
@@ -17,6 +19,11 @@ export interface Preferences {
   fitMode: "fit" | "fill" | "stretch";
   /** tirar da lista o que ja converteu, assim que o lote termina */
   clearFinishedOnDone: boolean;
+  /** onde salvar os downloads; null = pasta Downloads do sistema */
+  downloadDir: string | null;
+  downloadQuality: DownloadQuality;
+  /** mandar o que baixou direto para a fila de conversao */
+  sendDownloadsToQueue: boolean;
 }
 
 const DEFAULTS: Preferences = {
@@ -26,6 +33,9 @@ const DEFAULTS: Preferences = {
   allowPassthrough: true,
   fitMode: "fit",
   clearFinishedOnDone: false,
+  downloadDir: null,
+  downloadQuality: "best",
+  sendDownloadsToQueue: false,
 };
 
 const FIT_MODES = new Set(["fit", "fill", "stretch"]);
@@ -57,6 +67,15 @@ function sanitize(raw: unknown): Preferences {
       typeof input.clearFinishedOnDone === "boolean"
         ? input.clearFinishedOnDone
         : DEFAULTS.clearFinishedOnDone,
+    downloadDir:
+      typeof input.downloadDir === "string" ? input.downloadDir : DEFAULTS.downloadDir,
+    downloadQuality: isDownloadQuality(input.downloadQuality)
+      ? input.downloadQuality
+      : DEFAULTS.downloadQuality,
+    sendDownloadsToQueue:
+      typeof input.sendDownloadsToQueue === "boolean"
+        ? input.sendDownloadsToQueue
+        : DEFAULTS.sendDownloadsToQueue,
   };
 }
 

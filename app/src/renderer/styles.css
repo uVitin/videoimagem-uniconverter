@@ -469,3 +469,46 @@ select:disabled { opacity: 0.45; }
 .btn.ghost { background: transparent; }
 
 .btn.small { padding: 4px 10px; font-size: 12px; }
+
+/* ------------------------------ download -------------------------------- */
+
+.downloader {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: grid;
+  gap: 10px;
+}
+.downloader > summary {
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  list-style-position: inside;
+}
+.downloader[open] > summary { margin-bottom: 2px; }
+
+.download-form { display: flex; gap: 8px; align-items: center; }
+.download-form input[type="url"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font: inherit;
+}
+.download-form input[type="url"]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.download-options {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font: 11px/1.5 var(--mono);
+  color: var(--fg-muted);
+}
+.download-options .output-path { flex: 1 1 160px; }
+
+.download-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }

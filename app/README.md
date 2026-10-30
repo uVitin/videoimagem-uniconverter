@@ -12,6 +12,11 @@ O ffmpeg **não** é embarcado. O build com x264/x265 é GPL, e embarcar obrigar
 o app inteiro a ser GPL. O UniConverter faz o mesmo: chama um ffmpeg separado
 (no caso deles, o build público `tessus`).
 
+Para baixar da web também é preciso o **yt-dlp** (`brew install yt-dlp`). Ele é
+opcional: sem ele o app abre normal e só a seção "Baixar da web" fica desativada.
+Os sites mudam toda semana, então mantenha atualizado (`brew upgrade yt-dlp`).
+Para apontar outro binário: `VIDEOIMAGEM_YTDLP`.
+
 Se o ffmpeg estiver em outro lugar:
 
 ```bash
@@ -24,7 +29,7 @@ export VIDEOIMAGEM_FFPROBE=/caminho/para/ffprobe
 ```bash
 npm install
 npm start     # build + abre o app
-npm test      # 47 testes, inclui conversões reais
+npm test      # 74 testes, inclui conversões reais
 npm run build # só compila
 npm run pack  # empacota sem gerar instalador (release/mac/)
 npm run dist  # gera os DMG (x64 + arm64) em release/

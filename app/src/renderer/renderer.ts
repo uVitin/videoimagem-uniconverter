@@ -129,6 +129,32 @@ interface BatchSummary {
   elapsedSeconds: number;
 }
 
+type DownloadQuality = "best" | "2160" | "1440" | "1080" | "720" | "480" | "audio";
+type DownloadStatus = "pending" | "analyzing" | "running" | "done" | "failed" | "canceled";
+
+interface UiDownloadProgress {
+  fraction: number | null;
+  downloadedBytes: number;
+  totalBytes?: number;
+  speedBytesPerSec?: number;
+  etaSeconds?: number;
+  formatId?: string;
+}
+
+interface UiDownloadItem {
+  id: string;
+  url: string;
+  title: string | null;
+  quality: DownloadQuality;
+  status: DownloadStatus;
+  outputPath?: string;
+  error?: string;
+  elapsedSeconds?: number;
+  progress: UiDownloadProgress | null;
+}
+
+interface YtDlpInfo { available: boolean; path?: string; version?: string; hint?: string; }
+
 interface Preferences {
   lastProfileId: number | null;
   outputDir: string | null;
@@ -136,6 +162,9 @@ interface Preferences {
   allowPassthrough: boolean;
   fitMode: FitMode;
   clearFinishedOnDone: boolean;
+  downloadDir: string | null;
+  downloadQuality: DownloadQuality;
+  sendDownloadsToQueue: boolean;
 }
 
 interface EnvironmentInfo {
@@ -163,12 +192,24 @@ interface VideoimagemApi {
   cancelItem(id: string): Promise<boolean>;
   cancelAll(): Promise<void>;
   getPathForFile(file: File): string;
+  getYtDlp(): Promise<YtDlpInfo>;
+  listDownloads(): Promise<UiDownloadItem[]>;
+  addDownload(payload: { url: string; quality: DownloadQuality; addToConversionQueue: boolean }): Promise<UiDownloadItem[]>;
+  cancelDownload(id: string): Promise<boolean>;
+  cancelAllDownloads(): Promise<void>;
+  removeDownload(id: string): Promise<UiDownloadItem[]>;
+  clearFinishedDownloads(): Promise<UiDownloadItem[]>;
+  getDownloadDir(): Promise<string>;
   pickOutputDir(): Promise<string | null>;
   reveal(path: string): Promise<void>;
   onItemChanged(handler: (item: UiQueueItem) => void): void;
   onItemProgress(handler: (event: { itemId: string; progress: UiProgress }) => void): void;
   onItemLog(handler: (event: { itemId: string; line: string }) => void): void;
   onBatchDone(handler: (summary: BatchSummary) => void): void;
+  onQueueRefresh(handler: () => void): void;
+  onDownloadChanged(handler: (item: UiDownloadItem) => void): void;
+  onDownloadProgress(handler: (event: { itemId: string; progress: UiDownloadProgress }) => void): void;
+  onDownloadLog(handler: (event: { itemId: string; line: string }) => void): void;
 }
 
 declare const api: VideoimagemApi;
@@ -210,6 +251,16 @@ const dom = {
   progressText: el("progress-text"),
   logBox: el<HTMLDetailsElement>("log-box"),
   log: el("log"),
+  ytdlpMissing: el("ytdlp-missing"),
+  downloadForm: el<HTMLFormElement>("download-form"),
+  downloadUrl: el<HTMLInputElement>("download-url"),
+  downloadQuality: el<HTMLSelectElement>("download-quality"),
+  downloadGo: el<HTMLButtonElement>("download-go"),
+  downloadToQueue: el<HTMLInputElement>("download-to-queue"),
+  downloadDir: el("download-dir"),
+  downloadPickDir: el<HTMLButtonElement>("download-pick-dir"),
+  downloadClear: el<HTMLButtonElement>("download-clear"),
+  downloadList: el<HTMLUListElement>("download-list"),
 };
 
 const CHOICE_FIELDS = [
@@ -797,6 +848,212 @@ function appendLog(line: string): void {
 }
 
 // --------------------------------------------------------------------------- //
+// downloads
+
+const DOWNLOAD_STATUS_LABEL: Record<DownloadStatus, string> = {
+  pending: "na fila",
+  analyzing: "analisando",
+  running: "baixando",
+  done: "pronto",
+  failed: "falhou",
+  canceled: "cancelado",
+};
+
+const QUALITY_LABEL: Record<DownloadQuality, string> = {
+  best: "melhor", "2160": "até 4K", "1440": "até 1440p", "1080": "até 1080p",
+  "720": "até 720p", "480": "até 480p", audio: "áudio",
+};
+
+let downloads: UiDownloadItem[] = [];
+const downloadRefs = new Map<string, { fill: HTMLElement; text: HTMLElement }>();
+/** ids de trilha vistos por download: 'video+audio' baixa duas e a barra recomeca */
+const downloadStreams = new Map<string, string[]>();
+
+function downloadStatusIcon(status: DownloadStatus): string {
+  switch (status) {
+    case "done": return "✓";
+    case "failed": return "!";
+    case "canceled": return "–";
+    case "running": case "analyzing": return "▸";
+    default: return "•";
+  }
+}
+
+function describeDownloadProgress(item: UiDownloadItem, progress: UiDownloadProgress): string {
+  const parts: string[] = [];
+  if (progress.fraction != null) parts.push(`${Math.round(progress.fraction * 100)}%`);
+  else parts.push(formatBytes(progress.downloadedBytes));
+
+  const streams = downloadStreams.get(item.id) ?? [];
+  if (streams.length > 1) parts.push(`faixa ${streams.length}`);
+  if (progress.speedBytesPerSec) parts.push(`${formatBytes(progress.speedBytesPerSec)}/s`);
+  if (progress.etaSeconds != null) parts.push(`faltam ${formatDuration(progress.etaSeconds)}`);
+  return parts.join(" · ");
+}
+
+function buildDownloadRow(item: UiDownloadItem): HTMLLIElement {
+  const row = document.createElement("li");
+  row.className = `queue-item ${item.status}`;
+  row.dataset.downloadId = item.id;
+
+  const badge = document.createElement("span");
+  badge.className = "queue-status";
+  badge.textContent = downloadStatusIcon(item.status);
+  badge.title = DOWNLOAD_STATUS_LABEL[item.status];
+
+  const body = document.createElement("div");
+  body.className = "queue-body";
+
+  const name = document.createElement("div");
+  name.className = "queue-name";
+  name.textContent = item.title ?? item.url;
+  name.title = item.url;
+
+  const meta = document.createElement("div");
+  meta.className = "queue-meta";
+  if (item.status === "failed" && item.error) {
+    meta.classList.add("error");
+    meta.textContent = item.error.split("\n")[0] ?? item.error;
+    meta.title = item.error;
+  } else if (item.status === "done" && item.outputPath) {
+    meta.textContent = `→ ${item.outputPath.split("/").pop() ?? ""}` +
+      (item.elapsedSeconds ? ` · ${formatDuration(item.elapsedSeconds)}` : "");
+    meta.title = item.outputPath;
+  } else {
+    meta.textContent = `${QUALITY_LABEL[item.quality]} · ${DOWNLOAD_STATUS_LABEL[item.status]}`;
+  }
+  body.append(name, meta);
+
+  if (item.status === "running" || item.status === "analyzing") {
+    const progress = document.createElement("div");
+    progress.className = "queue-progress";
+
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    const fill = document.createElement("div");
+    fill.className = "fill";
+    if (item.progress?.fraction == null) fill.classList.add("indeterminate");
+    bar.append(fill);
+
+    const text = document.createElement("span");
+    text.className = "queue-progress-text";
+    text.textContent = item.status === "analyzing" ? "analisando o link…" : "iniciando…";
+
+    progress.append(bar, text);
+    body.append(progress);
+    downloadRefs.set(item.id, { fill, text });
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "queue-actions";
+
+  if (item.status === "done" && item.outputPath) {
+    const reveal = document.createElement("button");
+    reveal.type = "button";
+    reveal.className = "icon-btn";
+    reveal.textContent = "⤴";
+    reveal.title = "Mostrar no Finder";
+    reveal.addEventListener("click", () => void api.reveal(item.outputPath!));
+    actions.append(reveal);
+  }
+
+  const active = item.status === "running" || item.status === "analyzing" || item.status === "pending";
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "icon-btn";
+  remove.textContent = "×";
+  remove.title = active ? "Cancelar" : "Tirar da lista";
+  remove.addEventListener("click", () => {
+    if (active) void api.cancelDownload(item.id);
+    else void refreshDownloads(api.removeDownload(item.id));
+  });
+  actions.append(remove);
+
+  row.append(badge, body, actions);
+  return row;
+}
+
+function renderDownloads(): void {
+  downloadRefs.clear();
+  dom.downloadList.textContent = "";
+  dom.downloadList.hidden = downloads.length === 0;
+  dom.downloadClear.hidden = !downloads.some(
+    (item) => item.status === "done" || item.status === "failed" || item.status === "canceled",
+  );
+  for (const item of downloads) dom.downloadList.append(buildDownloadRow(item));
+}
+
+async function refreshDownloads(source: Promise<UiDownloadItem[]>): Promise<void> {
+  try {
+    downloads = await source;
+    renderDownloads();
+  } catch (error) {
+    showNote("warning", "download", describeError(error));
+  }
+}
+
+function onDownloadChanged(updated: UiDownloadItem): void {
+  const index = downloads.findIndex((item) => item.id === updated.id);
+  if (index >= 0) downloads[index] = updated;
+  else downloads.push(updated);
+  renderDownloads();
+}
+
+function onDownloadProgress({ itemId, progress }: { itemId: string; progress: UiDownloadProgress }): void {
+  const item = downloads.find((entry) => entry.id === itemId);
+  if (!item) return;
+  item.progress = progress;
+
+  if (progress.formatId) {
+    const seen = downloadStreams.get(itemId) ?? [];
+    if (!seen.includes(progress.formatId)) seen.push(progress.formatId);
+    downloadStreams.set(itemId, seen);
+  }
+
+  const refs = downloadRefs.get(itemId);
+  if (!refs) return;
+  refs.fill.classList.toggle("indeterminate", progress.fraction == null);
+  if (progress.fraction != null) refs.fill.style.width = `${(progress.fraction * 100).toFixed(1)}%`;
+  refs.text.textContent = describeDownloadProgress(item, progress);
+}
+
+async function submitDownload(): Promise<void> {
+  const url = dom.downloadUrl.value.trim();
+  if (!url) return;
+  dom.downloadGo.disabled = true;
+  try {
+    downloads = await api.addDownload({
+      url,
+      quality: dom.downloadQuality.value as DownloadQuality,
+      addToConversionQueue: dom.downloadToQueue.checked,
+    });
+    dom.downloadUrl.value = "";
+    renderDownloads();
+  } catch (error) {
+    showNote("warning", "download", describeError(error));
+  } finally {
+    dom.downloadGo.disabled = false;
+  }
+}
+
+async function initDownloads(): Promise<void> {
+  const ytdlp = await api.getYtDlp();
+  if (!ytdlp.available) {
+    // sem o yt-dlp o resto do app funciona igual; so o download fica indisponivel
+    dom.ytdlpMissing.hidden = false;
+    dom.ytdlpMissing.textContent =
+      "yt-dlp não encontrado. Instale com: brew install yt-dlp  (depois reabra o app).";
+    dom.downloadUrl.disabled = true;
+    dom.downloadQuality.disabled = true;
+    dom.downloadGo.disabled = true;
+    return;
+  }
+  dom.downloadGo.title = `yt-dlp ${ytdlp.version ?? ""}`.trim();
+  dom.downloadDir.textContent = await api.getDownloadDir();
+  await refreshDownloads(api.listDownloads());
+}
+
+// --------------------------------------------------------------------------- //
 
 function wireEvents(): void {
   dom.search.addEventListener("input", () => {
@@ -877,6 +1134,29 @@ function wireEvents(): void {
     else showNote("warning", "arquivo", "não consegui obter o caminho dos arquivos arrastados");
   });
 
+  dom.downloadForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void submitDownload();
+  });
+  dom.downloadQuality.addEventListener("change", () => {
+    void api.writePreferences({ downloadQuality: dom.downloadQuality.value as DownloadQuality });
+  });
+  dom.downloadToQueue.addEventListener("change", () => {
+    void api.writePreferences({ sendDownloadsToQueue: dom.downloadToQueue.checked });
+  });
+  dom.downloadPickDir.addEventListener("click", async () => {
+    const dir = await api.pickOutputDir();
+    if (dir) {
+      await api.writePreferences({ downloadDir: dir });
+      dom.downloadDir.textContent = dir;
+    }
+  });
+  dom.downloadClear.addEventListener("click", () => void refreshDownloads(api.clearFinishedDownloads()));
+
+  api.onDownloadChanged(onDownloadChanged);
+  api.onDownloadProgress(onDownloadProgress);
+  api.onQueueRefresh(() => void refreshQueue(api.listQueue()));
+
   api.onItemChanged(onItemChanged);
   api.onItemProgress(onItemProgress);
   api.onBatchDone((summary) => void onBatchDone(summary));
@@ -901,6 +1181,8 @@ async function applyPreferences(): Promise<void> {
   state.outputDir = prefs.outputDir;
   state.clearFinishedOnDone = prefs.clearFinishedOnDone;
   dom.clearOnDone.checked = prefs.clearFinishedOnDone;
+  dom.downloadQuality.value = prefs.downloadQuality;
+  dom.downloadToQueue.checked = prefs.sendDownloadsToQueue;
 
   if (prefs.lastProfileId != null) {
     const exists = state.groups.some((group) =>
@@ -939,6 +1221,12 @@ async function boot(): Promise<void> {
 
   await applyPreferences();
   await refreshQueue(api.listQueue());
+
+  try {
+    await initDownloads();
+  } catch (error) {
+    showNote("warning", "download", describeError(error));
+  }
 }
 
 void boot();

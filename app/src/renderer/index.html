@@ -35,6 +35,48 @@
 
       <!-- ------------------------------ work ------------------------------- -->
       <section class="panel work">
+        <!-- download -->
+        <details class="downloader" id="downloader" open>
+          <summary>Baixar da web</summary>
+
+          <div class="notes" id="ytdlp-missing" hidden></div>
+
+          <form class="download-form" id="download-form">
+            <input
+              type="url"
+              id="download-url"
+              placeholder="Cole o link do vídeo…"
+              autocomplete="off"
+              spellcheck="false"
+              required
+            />
+            <select id="download-quality" aria-label="Qualidade">
+              <option value="best">Melhor qualidade</option>
+              <option value="2160">até 4K (2160p)</option>
+              <option value="1440">até 1440p</option>
+              <option value="1080">até 1080p</option>
+              <option value="720">até 720p</option>
+              <option value="480">até 480p</option>
+              <option value="audio">Só o áudio</option>
+            </select>
+            <button type="submit" class="btn primary small" id="download-go">Baixar</button>
+          </form>
+
+          <div class="download-options">
+            <label class="toggle">
+              <input type="checkbox" id="download-to-queue" />
+              <span>Mandar para a fila de conversão ao terminar</span>
+            </label>
+            <span class="output-path" id="download-dir"></span>
+            <button type="button" class="btn ghost small" id="download-pick-dir">Pasta…</button>
+            <button type="button" class="btn ghost small" id="download-clear" hidden>
+              Limpar concluídos
+            </button>
+          </div>
+
+          <ul class="queue download-list" id="download-list" hidden></ul>
+        </details>
+
         <!-- fila -->
         <div class="section-head">
           <h2>Fila</h2>

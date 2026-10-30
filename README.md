@@ -19,15 +19,17 @@ Comece pelo [`app/README.md`](app/README.md) para rodar, e por
 
 ```bash
 brew install ffmpeg          # o ffmpeg não é embarcado (licença GPL do x264/x265)
+brew install yt-dlp          # só para o download; o resto funciona sem
+                             # (alternativa: binário em bin/ + VIDEOIMAGEM_YTDLP=bin/yt-dlp_macos)
 cd app && npm install && npm start
 ```
 
-`npm test` roda 47 testes, incluindo conversões de verdade.
+`npm test` roda 74 testes, incluindo conversões de verdade.
 
 ## Estado
 
 - ✅ **Conversão** — engine, interface, fila em lote, empacotamento (DMG)
-- ⬜ **Download** de vídeos
+- ✅ **Download** de vídeos — validado com o yt-dlp real (vídeo+áudio em mp4, só áudio)
 - ⬜ **Melhoria de qualidade**
 
 ## Sobre a engenharia reversa

@@ -7,6 +7,8 @@ import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
   BatchSettingsPayload,
   BatchSummary,
+  DownloadProgressEvent,
+  DownloadRequestPayload,
   EnvironmentInfo,
   ItemLogEvent,
   ItemProgressEvent,
@@ -14,7 +16,9 @@ import type {
   PresetGroup,
   ResolveRequestPayload,
   ResolveResponse,
+  UiDownloadItem,
   UiQueueItem,
+  YtDlpInfo,
 } from "./ipc-types";
 
 const api = {
@@ -46,6 +50,18 @@ const api = {
    */
   getPathForFile: (file: File): string => webUtils.getPathForFile(file),
 
+  getYtDlp: (): Promise<YtDlpInfo> => ipcRenderer.invoke("ytdlp:info"),
+  listDownloads: (): Promise<UiDownloadItem[]> => ipcRenderer.invoke("download:list"),
+  addDownload: (payload: DownloadRequestPayload): Promise<UiDownloadItem[]> =>
+    ipcRenderer.invoke("download:add", payload),
+  cancelDownload: (id: string): Promise<boolean> => ipcRenderer.invoke("download:cancel", id),
+  cancelAllDownloads: (): Promise<void> => ipcRenderer.invoke("download:cancel-all"),
+  removeDownload: (id: string): Promise<UiDownloadItem[]> =>
+    ipcRenderer.invoke("download:remove", id),
+  clearFinishedDownloads: (): Promise<UiDownloadItem[]> =>
+    ipcRenderer.invoke("download:clear-finished"),
+  getDownloadDir: (): Promise<string> => ipcRenderer.invoke("download:default-dir"),
+
   pickOutputDir: (): Promise<string | null> => ipcRenderer.invoke("dir:pick"),
   reveal: (path: string): Promise<void> => ipcRenderer.invoke("shell:reveal", path),
 
@@ -60,6 +76,21 @@ const api = {
   },
   onBatchDone: (handler: (summary: BatchSummary) => void): void => {
     ipcRenderer.on("queue:batch-done", (_event, payload: BatchSummary) => handler(payload));
+  },
+  /** a fila ganhou itens por fora (ex. download concluido enviado para conversao) */
+  onQueueRefresh: (handler: () => void): void => {
+    ipcRenderer.on("queue:refresh", () => handler());
+  },
+  onDownloadChanged: (handler: (item: UiDownloadItem) => void): void => {
+    ipcRenderer.on("download:item", (_event, payload: UiDownloadItem) => handler(payload));
+  },
+  onDownloadProgress: (handler: (event: DownloadProgressEvent) => void): void => {
+    ipcRenderer.on("download:progress", (_event, payload: DownloadProgressEvent) =>
+      handler(payload),
+    );
+  },
+  onDownloadLog: (handler: (event: ItemLogEvent) => void): void => {
+    ipcRenderer.on("download:log", (_event, payload: ItemLogEvent) => handler(payload));
   },
 };
 

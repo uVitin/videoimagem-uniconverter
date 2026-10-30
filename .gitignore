@@ -10,3 +10,4 @@ rea/
 
 # macOS
 .DS_Store
+bin/
