@@ -28,6 +28,7 @@
     "appId": "com.videoimagem.uniconverter",
     "productName": "Videoimagem UniConverter",
     "copyright": "Copyright © Videoimagem",
+    "afterPack": "tools/adhoc-sign.mjs",
     "directories": {
       "output": "release",
       "buildResources": "build"
