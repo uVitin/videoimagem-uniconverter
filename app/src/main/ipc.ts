@@ -9,7 +9,13 @@ import { linkProfile, type PresetDatabase } from "../engine/data";
 import { decidePassthrough } from "../engine/passthrough";
 import type { ProbeResult } from "../engine/probe";
 import { resolvePreset, type UserChoices } from "../engine/resolver";
-import { isDownloadQuality, locateYtDlp } from "../engine/ytdlp";
+import {
+  fetchMediaInfo,
+  isDownloadQuality,
+  locateYtDlp,
+  normalizeUrl,
+  type MediaInfo,
+} from "../engine/ytdlp";
 import { DownloadManager, type DownloadItem } from "./downloads";
 import { ConversionQueue, buildOutputPath, type QueueItem } from "./queue";
 import { readPreferences, writePreferences } from "./preferences";
@@ -19,6 +25,8 @@ import type {
   ChoiceOptions,
   DownloadRequestPayload,
   EnvironmentInfo,
+  FormatGroup,
+  FormatListItem,
   Option,
   Preferences,
   PresetGroup,
@@ -26,6 +34,7 @@ import type {
   ResolveRequestPayload,
   ResolveResponse,
   UiDownloadItem,
+  UiMediaInfo,
   UiQueueItem,
   UiSourceInfo,
   YtDlpInfo,
@@ -36,6 +45,15 @@ import type {
  * 7 Video · 1 Devices · 9 Web Sharing · 4 HD &3D · 5 Editing · 8 Audio · 10 Image
  */
 const CATEGORY_ORDER = [7, 1, 9, 4, 5, 8, 10, 200];
+
+/**
+ * Formatos que existem no Format.pro do UniConverter mas que o ffmpeg nao grava
+ * (documentos e vetores, ou containers sem muxer): oferecer seria prometer uma
+ * conversao que sempre falha.
+ */
+const UNSUPPORTED_EXTENSIONS = new Set([
+  ".pdf", ".psd", ".svg", ".eps", ".xpm", ".heic", ".swf", ".amv", ".ape",
+]);
 
 const MEDIA_EXTENSIONS = [
   "mp4", "mov", "m4v", "mkv", "avi", "wmv", "flv", "webm", "mpg", "mpeg",
@@ -99,6 +117,35 @@ function toUiItem(item: QueueItem): UiQueueItem {
   };
 }
 
+/** Analises recentes: a janela de opcoes analisa e o 'Baixar' reaproveita. */
+const ANALYSIS_TTL_MS = 10 * 60 * 1000;
+const analyses = new Map<string, { info: MediaInfo; at: number }>();
+
+function cachedAnalysis(url: string): MediaInfo | undefined {
+  const hit = analyses.get(url);
+  if (!hit) return undefined;
+  if (Date.now() - hit.at > ANALYSIS_TTL_MS) {
+    analyses.delete(url);
+    return undefined;
+  }
+  return hit.info;
+}
+
+function toUiMediaInfo(url: string, info: MediaInfo): UiMediaInfo {
+  return {
+    url,
+    title: info.title,
+    videoOptions: info.videoOptions,
+    subtitles: info.subtitles,
+    isLive: info.isLive,
+    ...(info.uploader ? { uploader: info.uploader } : {}),
+    ...(info.durationSeconds != null ? { durationSeconds: info.durationSeconds } : {}),
+    ...(info.thumbnail ? { thumbnail: info.thumbnail } : {}),
+    ...(info.audioSizeBytes != null ? { audioSizeBytes: info.audioSizeBytes } : {}),
+    ...(info.audioBitrateKbps != null ? { audioBitrateKbps: info.audioBitrateKbps } : {}),
+  };
+}
+
 function toUiDownload(item: DownloadItem): UiDownloadItem {
   return {
     id: item.id,
@@ -113,6 +160,44 @@ function toUiDownload(item: DownloadItem): UiDownloadItem {
   };
 }
 
+function buildFormatGroups(db: PresetDatabase): FormatGroup[] {
+  const categoryTitles = new Map(db.categories.map((c) => [c.id, c.title]));
+
+  const presetCounts = new Map<number, number>();
+  for (const profile of db.profiles) {
+    const formatId = linkProfile(db, profile).format?.id;
+    if (formatId != null) presetCounts.set(formatId, (presetCounts.get(formatId) ?? 0) + 1);
+  }
+
+  const buckets = new Map<number, FormatListItem[]>();
+  for (const format of db.formats) {
+    if (UNSUPPORTED_EXTENSIONS.has(format.extension.toLowerCase())) continue;
+    const item: FormatListItem = {
+      formatId: format.id,
+      title: format.title,
+      extension: format.extension,
+      categoryId: format.category_id,
+      categoryTitle: categoryTitles.get(format.category_id) ?? `Categoria ${format.category_id}`,
+      presetCount: presetCounts.get(format.id) ?? 0,
+    };
+    const bucket = buckets.get(format.category_id);
+    if (bucket) bucket.push(item);
+    else buckets.set(format.category_id, [item]);
+  }
+
+  return [...buckets.entries()]
+    .map(([categoryId, items]) => ({
+      categoryId,
+      categoryTitle: categoryTitles.get(categoryId) ?? `Categoria ${categoryId}`,
+      items: items.sort((a, b) => a.title.localeCompare(b.title, "pt-BR")),
+    }))
+    .sort((a, b) => {
+      const rankA = CATEGORY_ORDER.indexOf(a.categoryId);
+      const rankB = CATEGORY_ORDER.indexOf(b.categoryId);
+      return (rankA < 0 ? 99 : rankA) - (rankB < 0 ? 99 : rankB);
+    });
+}
+
 function buildPresetGroups(db: PresetDatabase): PresetGroup[] {
   const categoryTitles = new Map(db.categories.map((c) => [c.id, c.title]));
   const buckets = new Map<number, PresetListItem[]>();
@@ -124,6 +209,7 @@ function buildPresetGroups(db: PresetDatabase): PresetGroup[] {
 
     const item: PresetListItem = {
       profileId: profile.id,
+      formatId: link.format?.id ?? null,
       title: profile.title,
       container: link.container,
       videoEncoder: profile.video_encoder ?? null,
@@ -177,8 +263,14 @@ function handleResolve(
     : undefined;
   const source: ProbeResult | undefined = item?.probe;
 
+  if (payload.profileId == null && payload.formatId == null) {
+    throw new Error("escolha um formato");
+  }
+
   const resolved = resolvePreset(db, {
-    profileId: payload.profileId,
+    ...(payload.profileId != null
+      ? { profileId: payload.profileId }
+      : { formatId: payload.formatId as number }),
     overrides: toEngineOverrides(payload.overrides),
     ...(source ? { source } : {}),
   });
@@ -322,6 +414,7 @@ export function registerIpc({ db, window }: IpcContext): void {
   // --- presets --------------------------------------------------------------
 
   ipcMain.handle("presets:list", (): PresetGroup[] => buildPresetGroups(db));
+  ipcMain.handle("formats:list", (): FormatGroup[] => buildFormatGroups(db));
 
   ipcMain.handle("preset:resolve", (_event, payload: ResolveRequestPayload): ResolveResponse =>
     handleResolve(db, payload, payload.outputDir ?? null),
@@ -378,7 +471,8 @@ export function registerIpc({ db, window }: IpcContext): void {
     const active = await ensureQueue();
     // nao esperamos: o progresso chega pelos eventos
     void active.start({
-      profileId: settings.profileId,
+      ...(settings.profileId != null ? { profileId: settings.profileId } : {}),
+      ...(settings.formatId != null ? { formatId: settings.formatId } : {}),
       overrides: toEngineOverrides(settings.overrides),
       preferHardware: settings.preferHardware === true,
       fitMode: settings.fitMode ?? "fit",
@@ -405,6 +499,14 @@ export function registerIpc({ db, window }: IpcContext): void {
     return downloads.list().map(toUiDownload);
   });
 
+  ipcMain.handle("download:analyze", async (_event, rawUrl: string): Promise<UiMediaInfo> => {
+    const url = normalizeUrl(rawUrl);
+    const ytdlp = await locateYtDlp();
+    const info = cachedAnalysis(url) ?? (await fetchMediaInfo(ytdlp.path, url));
+    analyses.set(url, { info, at: Date.now() });
+    return toUiMediaInfo(url, info);
+  });
+
   ipcMain.handle(
     "download:add",
     async (_event, payload: DownloadRequestPayload): Promise<UiDownloadItem[]> => {
@@ -416,6 +518,15 @@ export function registerIpc({ db, window }: IpcContext): void {
         quality: payload.quality,
         outputDir: prefs.downloadDir ?? app.getPath("downloads"),
         addToConversionQueue: payload.addToConversionQueue === true,
+        thumbnail: payload.thumbnail === true,
+        subtitleLang: typeof payload.subtitleLang === "string" ? payload.subtitleLang : null,
+        ...(payload.audioFormat === "mp3" || payload.audioFormat === "original"
+          ? { audioFormat: payload.audioFormat }
+          : {}),
+        ...(() => {
+          const known = cachedAnalysis(normalizeUrl(payload.url));
+          return known ? { info: known } : {};
+        })(),
       });
       return active.list().map(toUiDownload);
     },

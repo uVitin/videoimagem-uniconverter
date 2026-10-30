@@ -13,6 +13,7 @@ interface Option<T> { value: T; label: string; }
 
 interface PresetListItem {
   profileId: number;
+  formatId: number | null;
   title: string;
   container: string;
   videoEncoder: string | null;
@@ -20,6 +21,17 @@ interface PresetListItem {
   resolutionLabel: string | null;
   linkPath: string;
 }
+
+interface FormatListItem {
+  formatId: number;
+  title: string;
+  extension: string;
+  categoryId: number;
+  categoryTitle: string;
+  presetCount: number;
+}
+
+interface FormatGroup { categoryId: number; categoryTitle: string; items: FormatListItem[]; }
 
 interface PresetGroup { categoryId: number; categoryTitle: string; items: PresetListItem[]; }
 
@@ -103,7 +115,8 @@ interface ResolveResponse {
 }
 
 interface ResolveRequestPayload {
-  profileId: number;
+  profileId: number | null;
+  formatId?: number | null;
   overrides?: Partial<UiChoices>;
   itemId?: string | null;
   preferHardware?: boolean;
@@ -113,7 +126,8 @@ interface ResolveRequestPayload {
 }
 
 interface BatchSettingsPayload {
-  profileId: number;
+  profileId: number | null;
+  formatId?: number | null;
   overrides?: Partial<UiChoices>;
   preferHardware?: boolean;
   fitMode?: FitMode;
@@ -129,7 +143,9 @@ interface BatchSummary {
   elapsedSeconds: number;
 }
 
-type DownloadQuality = "best" | "2160" | "1440" | "1080" | "720" | "480" | "audio";
+/** "best", "audio" ou a altura maxima em pixels ("1080") */
+type DownloadQuality = string;
+type AudioFormat = "mp3" | "original";
 type DownloadStatus = "pending" | "analyzing" | "running" | "done" | "failed" | "canceled";
 
 interface UiDownloadProgress {
@@ -153,10 +169,26 @@ interface UiDownloadItem {
   progress: UiDownloadProgress | null;
 }
 
+interface UiVideoOption { height: number; sizeBytes?: number; }
+interface UiSubtitleOption { code: string; name: string; auto: boolean; }
+
+interface UiMediaInfo {
+  url: string;
+  title: string;
+  uploader?: string;
+  durationSeconds?: number;
+  videoOptions: UiVideoOption[];
+  audioSizeBytes?: number;
+  audioBitrateKbps?: number;
+  subtitles: UiSubtitleOption[];
+  isLive: boolean;
+}
+
 interface YtDlpInfo { available: boolean; path?: string; version?: string; hint?: string; }
 
 interface Preferences {
   lastProfileId: number | null;
+  lastFormatId: number | null;
   outputDir: string | null;
   preferHardware: boolean;
   allowPassthrough: boolean;
@@ -165,6 +197,10 @@ interface Preferences {
   downloadDir: string | null;
   downloadQuality: DownloadQuality;
   sendDownloadsToQueue: boolean;
+  skipDownloadDialog: boolean;
+  downloadAudioFormat: AudioFormat;
+  downloadThumbnail: boolean;
+  downloadSubtitles: boolean;
 }
 
 interface EnvironmentInfo {
@@ -181,6 +217,7 @@ interface VideoimagemApi {
   readPreferences(): Promise<Preferences>;
   writePreferences(patch: Partial<Preferences>): Promise<Preferences>;
   listPresets(): Promise<PresetGroup[]>;
+  listFormats(): Promise<FormatGroup[]>;
   resolvePreset(payload: ResolveRequestPayload): Promise<ResolveResponse>;
   listQueue(): Promise<UiQueueItem[]>;
   addFilesDialog(): Promise<UiQueueItem[]>;
@@ -194,7 +231,15 @@ interface VideoimagemApi {
   getPathForFile(file: File): string;
   getYtDlp(): Promise<YtDlpInfo>;
   listDownloads(): Promise<UiDownloadItem[]>;
-  addDownload(payload: { url: string; quality: DownloadQuality; addToConversionQueue: boolean }): Promise<UiDownloadItem[]>;
+  analyzeDownload(url: string): Promise<UiMediaInfo>;
+  addDownload(payload: {
+    url: string;
+    quality: DownloadQuality;
+    addToConversionQueue: boolean;
+    audioFormat?: AudioFormat;
+    thumbnail?: boolean;
+    subtitleLang?: string | null;
+  }): Promise<UiDownloadItem[]>;
   cancelDownload(id: string): Promise<boolean>;
   cancelAllDownloads(): Promise<void>;
   removeDownload(id: string): Promise<UiDownloadItem[]>;
@@ -224,9 +269,14 @@ const el = <T extends HTMLElement>(id: string): T => {
 
 const dom = {
   env: el("env"),
-  search: el<HTMLInputElement>("preset-search"),
-  presetList: el("preset-list"),
-  presetCount: el("preset-count"),
+  formatSelect: el<HTMLSelectElement>("format-select"),
+  presetSelect: el<HTMLSelectElement>("preset-select"),
+  exportHint: el("export-hint"),
+  navConverter: el<HTMLButtonElement>("nav-converter"),
+  navDownloader: el<HTMLButtonElement>("nav-downloader"),
+  navBadge: el("nav-download-badge"),
+  viewConverter: el("view-converter"),
+  viewDownloader: el("view-downloader"),
   dropzone: el("dropzone"),
   dropzoneEmpty: el("dropzone-empty"),
   queue: el<HTMLUListElement>("queue"),
@@ -254,7 +304,29 @@ const dom = {
   ytdlpMissing: el("ytdlp-missing"),
   downloadForm: el<HTMLFormElement>("download-form"),
   downloadUrl: el<HTMLInputElement>("download-url"),
-  downloadQuality: el<HTMLSelectElement>("download-quality"),
+  downloadEmpty: el("download-empty"),
+  downloadEmptyTitle: el("download-empty-title"),
+  downloadEmptyHint: el("download-empty-hint"),
+  tabActive: el<HTMLButtonElement>("dl-tab-active"),
+  tabDone: el<HTMLButtonElement>("dl-tab-done"),
+  countActive: el("dl-count-active"),
+  countDone: el("dl-count-done"),
+  downloadCancelAll: el<HTMLButtonElement>("download-cancel-all"),
+  downloadAsk: el<HTMLInputElement>("download-ask"),
+  dialog: el<HTMLDialogElement>("download-dialog"),
+  ddTitle: el("dd-title"),
+  ddMeta: el("dd-meta"),
+  ddVideo: el("dd-video"),
+  ddAudio: el("dd-audio"),
+  ddThumbnail: el<HTMLInputElement>("dd-thumbnail"),
+  ddSubsOn: el<HTMLInputElement>("dd-subs-on"),
+  ddSubsLang: el<HTMLSelectElement>("dd-subs-lang"),
+  ddSubs: el("dd-subs"),
+  ddSubsNone: el("dd-subs-none"),
+  ddRemember: el<HTMLInputElement>("dd-remember"),
+  ddGo: el<HTMLButtonElement>("dd-go"),
+  ddCancel: el<HTMLButtonElement>("dd-cancel"),
+  ddClose: el<HTMLButtonElement>("dd-close"),
   downloadGo: el<HTMLButtonElement>("download-go"),
   downloadToQueue: el<HTMLInputElement>("download-to-queue"),
   downloadDir: el("download-dir"),
@@ -297,7 +369,10 @@ const STATUS_LABEL: Record<QueueStatus, string> = {
 
 interface State {
   groups: PresetGroup[];
-  filter: string;
+  formatGroups: FormatGroup[];
+  /** formato escolhido; DEVICES_FORMAT = so presets de dispositivos sem formato */
+  selectedFormatId: number | null;
+  /** null = "Personalizado": padroes do formato, sem preset */
   selectedPresetId: number | null;
   items: UiQueueItem[];
   /** item cujos metadados alimentam a previa dos ajustes */
@@ -312,7 +387,8 @@ interface State {
 
 const state: State = {
   groups: [],
-  filter: "",
+  formatGroups: [],
+  selectedFormatId: null,
   selectedPresetId: null,
   items: [],
   focusedItemId: null,
@@ -373,71 +449,132 @@ function describeError(error: unknown): string {
 }
 
 // --------------------------------------------------------------------------- //
-// presets
+// formato e predefinicao (o "Format / Preset" do Premiere)
 
-function matchesFilter(item: PresetListItem, filter: string): boolean {
-  if (!filter) return true;
-  const haystack = [
-    item.title, item.container, item.videoEncoder ?? "",
-    item.audioEncoder ?? "", item.resolutionLabel ?? "",
-  ].join(" ").toLowerCase();
-  return filter.toLowerCase().split(/\s+/).filter(Boolean)
-    .every((term) => haystack.includes(term));
+/** presets de dispositivos que o banco original nao liga a nenhum formato */
+const DEVICES_FORMAT = -1;
+
+const CATEGORY_LABEL: Record<number, string> = {
+  7: "Vídeo", 8: "Áudio", 5: "Edição", 4: "HD e 3D", 9: "Web",
+  10: "Imagem e GIF", 1: "Dispositivos", 200: "Personalizado",
+};
+
+function extensionLabel(extension: string): string {
+  return extension.replace(".", "").toLowerCase();
 }
 
-function renderPresets(): void {
-  dom.presetList.textContent = "";
-  let shown = 0;
+function formatLabel(item: FormatListItem): string {
+  const ext = extensionLabel(item.extension);
+  return item.title.toLowerCase() === ext ? `${item.title}` : `${item.title} — .${ext}`;
+}
 
+function presetsForFormat(formatId: number | null): PresetListItem[] {
+  if (formatId == null) return [];
+  const wanted = formatId === DEVICES_FORMAT ? null : formatId;
+  const out: PresetListItem[] = [];
   for (const group of state.groups) {
-    const items = group.items.filter((item) => matchesFilter(item, state.filter));
-    if (items.length === 0) continue;
-
-    const title = document.createElement("div");
-    title.className = "preset-group-title";
-    title.textContent = `${group.categoryTitle} · ${items.length}`;
-    dom.presetList.append(title);
-
-    for (const item of items) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "preset-item";
-      button.setAttribute("role", "option");
-      button.setAttribute("aria-selected", String(item.profileId === state.selectedPresetId));
-      button.dataset.presetId = String(item.profileId);
-
-      const name = document.createElement("span");
-      name.className = "preset-name";
-      name.textContent = item.title;
-
-      const meta = document.createElement("span");
-      meta.className = "preset-meta";
-      meta.textContent = [
-        item.container.replace(".", "").toUpperCase(),
-        item.videoEncoder,
-        item.resolutionLabel,
-      ].filter(Boolean).join(" · ");
-
-      button.append(name, meta);
-      button.addEventListener("click", () => void selectPreset(item.profileId));
-      dom.presetList.append(button);
-      shown += 1;
+    for (const item of group.items) {
+      if (item.formatId === wanted) out.push(item);
     }
   }
-
-  const total = state.groups.reduce((sum, group) => sum + group.items.length, 0);
-  dom.presetCount.textContent = state.filter ? `${shown} de ${total} presets` : `${total} presets`;
+  return out.sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
 }
 
-function scrollSelectedPresetIntoView(): void {
-  const selected = dom.presetList.querySelector('[aria-selected="true"]');
-  selected?.scrollIntoView({ block: "nearest" });
+function hasTarget(): boolean {
+  if (state.selectedPresetId != null) return true;
+  return state.selectedFormatId != null && state.selectedFormatId !== DEVICES_FORMAT;
 }
 
-async function selectPreset(profileId: number): Promise<void> {
+/** O que a engine precisa saber do alvo: um preset, ou so o formato. */
+function targetPayload(): { profileId: number | null; formatId: number | null } {
+  return state.selectedPresetId != null
+    ? { profileId: state.selectedPresetId, formatId: null }
+    : { profileId: null, formatId: state.selectedFormatId };
+}
+
+function renderFormatSelect(): void {
+  dom.formatSelect.textContent = "";
+  const seen = new Map<string, number>();
+
+  for (const group of state.formatGroups) {
+    const optgroup = document.createElement("optgroup");
+    optgroup.label = CATEGORY_LABEL[group.categoryId] ?? group.categoryTitle;
+
+    for (const item of group.items) {
+      let label = formatLabel(item);
+      // o banco tem formatos de mesmo nome (dois "MP4"): numera para distinguir
+      const times = (seen.get(label) ?? 0) + 1;
+      seen.set(label, times);
+      if (times > 1) label += ` (${times})`;
+
+      const option = document.createElement("option");
+      option.value = String(item.formatId);
+      option.textContent = label;
+      optgroup.append(option);
+    }
+
+    // os presets sem formato entram no fim de Dispositivos
+    if (group.categoryId === 1 && presetsForFormat(DEVICES_FORMAT).length > 0) {
+      const option = document.createElement("option");
+      option.value = String(DEVICES_FORMAT);
+      option.textContent = "Outros dispositivos";
+      optgroup.append(option);
+    }
+    dom.formatSelect.append(optgroup);
+  }
+
+  if (state.selectedFormatId != null) dom.formatSelect.value = String(state.selectedFormatId);
+}
+
+function renderPresetSelect(): void {
+  dom.presetSelect.textContent = "";
+  const presets = presetsForFormat(state.selectedFormatId);
+  const deviceOnly = state.selectedFormatId === DEVICES_FORMAT;
+
+  if (!deviceOnly) {
+    const custom = document.createElement("option");
+    custom.value = "";
+    custom.textContent = "Personalizado";
+    dom.presetSelect.append(custom);
+  }
+
+  for (const item of presets) {
+    const option = document.createElement("option");
+    option.value = String(item.profileId);
+    option.textContent = [item.title, item.resolutionLabel].filter(Boolean).join(" · ");
+    dom.presetSelect.append(option);
+  }
+
+  dom.presetSelect.value = state.selectedPresetId != null ? String(state.selectedPresetId) : "";
+  dom.presetSelect.disabled = state.running;
+
+  dom.exportHint.textContent =
+    state.selectedPresetId != null
+      ? ""
+      : deviceOnly
+        ? "Escolha o aparelho em Predefinição."
+        : presets.length > 0
+          ? `${presets.length} predefinições para este formato. Em Personalizado você ajusta tudo abaixo.`
+          : "Sem predefinições para este formato: ajuste codec, resolução e bitrate abaixo.";
+}
+
+async function selectFormat(formatId: number, presetId: number | null = null): Promise<void> {
+  state.selectedFormatId = formatId;
+  // nos "Outros dispositivos" nao ha Personalizado: cai no primeiro aparelho
+  state.selectedPresetId =
+    presetId ?? (formatId === DEVICES_FORMAT ? (presetsForFormat(formatId)[0]?.profileId ?? null) : null);
+  state.overrides = {}; // trocar de formato/preset zera o que o usuario tinha mexido
+
+  dom.formatSelect.value = String(formatId);
+  renderPresetSelect();
+  void api.writePreferences({ lastFormatId: formatId, lastProfileId: state.selectedPresetId });
+  await refreshResolved();
+}
+
+async function selectPreset(profileId: number | null): Promise<void> {
   state.selectedPresetId = profileId;
-  state.overrides = {}; // trocar de preset zera o que o usuario tinha mexido
-  renderPresets();
+  state.overrides = {};
+  renderPresetSelect();
   void api.writePreferences({ lastProfileId: profileId });
   await refreshResolved();
 }
@@ -573,7 +710,7 @@ function updateConvertButton(): void {
   // durante o lote quem manda e o 'Cancelar tudo'; deixar os dois lado a lado
   // so confunde
   dom.convert.hidden = state.running;
-  dom.convert.disabled = pending === 0 || state.selectedPresetId == null;
+  dom.convert.disabled = pending === 0 || !hasTarget();
 }
 
 async function refreshQueue(source: Promise<UiQueueItem[]>): Promise<void> {
@@ -651,7 +788,7 @@ function renderNotes(resolved: ResolveResponse): void {
 }
 
 async function refreshResolved(): Promise<void> {
-  if (state.selectedPresetId == null) {
+  if (!hasTarget()) {
     dom.settings.hidden = true;
     updateConvertButton();
     return;
@@ -660,7 +797,7 @@ async function refreshResolved(): Promise<void> {
   let resolved: ResolveResponse;
   try {
     resolved = await api.resolvePreset({
-      profileId: state.selectedPresetId,
+      ...targetPayload(),
       overrides: state.overrides,
       itemId: state.focusedItemId,
       preferHardware: dom.preferHardware.checked,
@@ -677,10 +814,11 @@ async function refreshResolved(): Promise<void> {
   state.resolved = resolved;
   dom.settings.hidden = false;
 
-  dom.targetTitle.textContent = [
-    resolved.profileTitle,
-    resolved.container.replace(".", "").toUpperCase(),
-  ].filter(Boolean).join(" → ");
+  const targetName = resolved.profileTitle ?? resolved.formatTitle;
+  const targetExt = resolved.container.replace(".", "").toUpperCase();
+  // "MP4 → MP4" nao diz nada: so mostra a extensao quando o nome nao e ela
+  dom.targetTitle.textContent =
+    targetName && targetName.toUpperCase() !== targetExt ? `${targetName} → ${targetExt}` : targetExt;
   dom.targetTitle.title =
     resolved.appliedLimitCount > 0
       ? `${resolved.appliedLimitCount} restrição(ões) do formato aplicadas`
@@ -714,6 +852,8 @@ function setRunning(running: boolean): void {
   dom.addFiles.disabled = running;
   dom.pickDir.disabled = running;
   dom.resetDir.disabled = running;
+  dom.formatSelect.disabled = running;
+  dom.presetSelect.disabled = running;
   for (const field of CHOICE_FIELDS) {
     const select = el<HTMLSelectElement>(field);
     if (!select.disabled || !running) select.disabled = running;
@@ -741,7 +881,7 @@ function updateOverallProgress(): void {
 }
 
 async function startQueue(): Promise<void> {
-  if (state.selectedPresetId == null || pendingCount() === 0) return;
+  if (!hasTarget() || pendingCount() === 0) return;
 
   logLines.length = 0;
   dom.log.textContent = "";
@@ -752,7 +892,7 @@ async function startQueue(): Promise<void> {
 
   try {
     await api.startQueue({
-      profileId: state.selectedPresetId,
+      ...targetPayload(),
       overrides: state.overrides,
       preferHardware: dom.preferHardware.checked,
       fitMode: dom.fitMode.value as FitMode,
@@ -848,7 +988,20 @@ function appendLog(line: string): void {
 }
 
 // --------------------------------------------------------------------------- //
-// downloads
+// navegacao
+
+type ViewName = "converter" | "downloader";
+
+function showView(name: ViewName): void {
+  dom.viewConverter.hidden = name !== "converter";
+  dom.viewDownloader.hidden = name !== "downloader";
+  dom.navConverter.classList.toggle("active", name === "converter");
+  dom.navDownloader.classList.toggle("active", name === "downloader");
+  if (name === "downloader") dom.downloadUrl.focus();
+}
+
+// --------------------------------------------------------------------------- //
+// downloader
 
 const DOWNLOAD_STATUS_LABEL: Record<DownloadStatus, string> = {
   pending: "na fila",
@@ -859,15 +1012,31 @@ const DOWNLOAD_STATUS_LABEL: Record<DownloadStatus, string> = {
   canceled: "cancelado",
 };
 
-const QUALITY_LABEL: Record<DownloadQuality, string> = {
-  best: "melhor", "2160": "até 4K", "1440": "até 1440p", "1080": "até 1080p",
-  "720": "até 720p", "480": "até 480p", audio: "áudio",
-};
+function qualityLabel(quality: DownloadQuality): string {
+  if (quality === "best") return "melhor qualidade";
+  if (quality === "audio") return "só áudio";
+  return `até ${quality}p`;
+}
 
 let downloads: UiDownloadItem[] = [];
+let downloadTab: "active" | "done" = "active";
 const downloadRefs = new Map<string, { fill: HTMLElement; text: HTMLElement }>();
 /** ids de trilha vistos por download: 'video+audio' baixa duas e a barra recomeca */
 const downloadStreams = new Map<string, string[]>();
+
+/** Ultimas escolhas, que a janela de opcoes oferece como padrao. */
+const downloadChoices = {
+  quality: "best" as DownloadQuality,
+  audioFormat: "mp3" as AudioFormat,
+  thumbnail: false,
+  subtitles: false,
+  /** false = baixa direto com as escolhas anteriores, sem abrir a janela */
+  askFirst: true,
+};
+
+function isActiveDownload(item: UiDownloadItem): boolean {
+  return item.status === "pending" || item.status === "analyzing" || item.status === "running";
+}
 
 function downloadStatusIcon(status: DownloadStatus): string {
   switch (status) {
@@ -920,7 +1089,7 @@ function buildDownloadRow(item: UiDownloadItem): HTMLLIElement {
       (item.elapsedSeconds ? ` · ${formatDuration(item.elapsedSeconds)}` : "");
     meta.title = item.outputPath;
   } else {
-    meta.textContent = `${QUALITY_LABEL[item.quality]} · ${DOWNLOAD_STATUS_LABEL[item.status]}`;
+    meta.textContent = `${qualityLabel(item.quality)} · ${DOWNLOAD_STATUS_LABEL[item.status]}`;
   }
   body.append(name, meta);
 
@@ -941,7 +1110,10 @@ function buildDownloadRow(item: UiDownloadItem): HTMLLIElement {
 
     progress.append(bar, text);
     body.append(progress);
-    downloadRefs.set(item.id, { fill, text });
+    const refs = { fill, text };
+    downloadRefs.set(item.id, refs);
+    // a lista e redesenhada a cada mudanca; sem isto a barra voltava a zero
+    if (item.status === "running" && item.progress) applyDownloadProgress(item, item.progress, refs);
   }
 
   const actions = document.createElement("div");
@@ -957,7 +1129,7 @@ function buildDownloadRow(item: UiDownloadItem): HTMLLIElement {
     actions.append(reveal);
   }
 
-  const active = item.status === "running" || item.status === "analyzing" || item.status === "pending";
+  const active = isActiveDownload(item);
   const remove = document.createElement("button");
   remove.type = "button";
   remove.className = "icon-btn";
@@ -973,14 +1145,43 @@ function buildDownloadRow(item: UiDownloadItem): HTMLLIElement {
   return row;
 }
 
+function setDownloadTab(tab: "active" | "done"): void {
+  downloadTab = tab;
+  renderDownloads();
+}
+
 function renderDownloads(): void {
   downloadRefs.clear();
   dom.downloadList.textContent = "";
-  dom.downloadList.hidden = downloads.length === 0;
-  dom.downloadClear.hidden = !downloads.some(
-    (item) => item.status === "done" || item.status === "failed" || item.status === "canceled",
-  );
-  for (const item of downloads) dom.downloadList.append(buildDownloadRow(item));
+
+  const active = downloads.filter(isActiveDownload);
+  const finished = downloads.filter((item) => !isActiveDownload(item));
+  const shown = downloadTab === "active" ? active : finished;
+
+  dom.countActive.textContent = active.length > 0 ? `(${active.length})` : "";
+  dom.countDone.textContent = finished.length > 0 ? `(${finished.length})` : "";
+  dom.navBadge.hidden = active.length === 0;
+  dom.navBadge.textContent = String(active.length);
+
+  for (const [button, tab] of [[dom.tabActive, "active"], [dom.tabDone, "done"]] as const) {
+    button.classList.toggle("active", downloadTab === tab);
+    button.setAttribute("aria-selected", String(downloadTab === tab));
+  }
+
+  dom.downloadList.hidden = shown.length === 0;
+  dom.downloadEmpty.hidden = shown.length > 0;
+  if (downloadTab === "active") {
+    dom.downloadEmptyTitle.textContent = "Nenhum download em andamento";
+    dom.downloadEmptyHint.textContent = "Cole o link de um vídeo acima para começar.";
+  } else {
+    dom.downloadEmptyTitle.textContent = "Nada concluído ainda";
+    dom.downloadEmptyHint.textContent = "Os downloads terminados aparecem aqui.";
+  }
+
+  dom.downloadCancelAll.hidden = downloadTab !== "active" || active.length === 0;
+  dom.downloadClear.hidden = downloadTab !== "done" || finished.length === 0;
+
+  for (const item of shown) dom.downloadList.append(buildDownloadRow(item));
 }
 
 async function refreshDownloads(source: Promise<UiDownloadItem[]>): Promise<void> {
@@ -988,7 +1189,7 @@ async function refreshDownloads(source: Promise<UiDownloadItem[]>): Promise<void
     downloads = await source;
     renderDownloads();
   } catch (error) {
-    showNote("warning", "download", describeError(error));
+    setDownloadMessage(describeError(error));
   }
 }
 
@@ -1011,28 +1212,230 @@ function onDownloadProgress({ itemId, progress }: { itemId: string; progress: Ui
   }
 
   const refs = downloadRefs.get(itemId);
-  if (!refs) return;
+  if (refs) applyDownloadProgress(item, progress, refs);
+}
+
+function applyDownloadProgress(
+  item: UiDownloadItem,
+  progress: UiDownloadProgress,
+  refs: { fill: HTMLElement; text: HTMLElement },
+): void {
   refs.fill.classList.toggle("indeterminate", progress.fraction == null);
   if (progress.fraction != null) refs.fill.style.width = `${(progress.fraction * 100).toFixed(1)}%`;
   refs.text.textContent = describeDownloadProgress(item, progress);
 }
 
-async function submitDownload(): Promise<void> {
-  const url = dom.downloadUrl.value.trim();
-  if (!url) return;
-  dom.downloadGo.disabled = true;
+/** Mensagem no topo do downloader: erro de link, ou yt-dlp ausente. */
+function setDownloadMessage(text: string | null): void {
+  dom.ytdlpMissing.hidden = !text;
+  dom.ytdlpMissing.textContent = "";
+  if (text) showNoteIn(dom.ytdlpMissing, "warning", "download", text);
+}
+
+function showNoteIn(container: HTMLElement, severity: Severity, field: string, message: string): void {
+  const div = document.createElement("div");
+  div.className = `note ${severity}`;
+  const label = document.createElement("span");
+  label.className = "note-field";
+  label.textContent = field;
+  const text = document.createElement("span");
+  text.textContent = message;
+  div.append(label, text);
+  container.append(div);
+}
+
+// --- janela de opcoes -------------------------------------------------------
+
+let dialogInfo: UiMediaInfo | null = null;
+
+/** MB decimal, como o YouTube e a referencia mostram (119,9 MB), nao MiB. */
+function sizeLabel(bytes: number | undefined, approximate = false): string {
+  if (!bytes) return "—";
+  const mb = bytes / 1_000_000;
+  const text = mb >= 1000 ? `${(mb / 1000).toFixed(2)} GB` : `${mb.toFixed(1)} MB`;
+  return approximate ? `~${text}` : text;
+}
+
+function addOptionRow(
+  container: HTMLElement,
+  value: string,
+  columns: [string, string, string],
+  checked: boolean,
+): void {
+  const row = document.createElement("label");
+  row.className = "dd-option";
+
+  const radio = document.createElement("input");
+  radio.type = "radio";
+  radio.name = "dd-quality";
+  radio.value = value;
+  radio.checked = checked;
+
+  const [format, detail, size] = columns;
+  const formatCell = document.createElement("span");
+  formatCell.textContent = format;
+  const detailCell = document.createElement("span");
+  detailCell.textContent = detail;
+  const sizeCell = document.createElement("span");
+  sizeCell.className = "dd-size";
+  sizeCell.textContent = size;
+
+  row.append(radio, formatCell, detailCell, sizeCell);
+  container.append(row);
+}
+
+/** Qual linha vem marcada: a escolha anterior, ou a maior resolucao. */
+function defaultChoice(info: UiMediaInfo): string {
+  const saved = downloadChoices.quality;
+  if (saved === "audio") return `audio:${downloadChoices.audioFormat}`;
+  if (info.videoOptions.length === 0) return "best";
+
+  const wanted = saved === "best" ? Infinity : Number(saved);
+  const fits = info.videoOptions.find((option) => option.height <= wanted);
+  return String((fits ?? info.videoOptions[info.videoOptions.length - 1]!).height);
+}
+
+function openDownloadDialog(info: UiMediaInfo): void {
+  dialogInfo = info;
+  dom.ddTitle.textContent = info.title;
+  dom.ddTitle.title = info.title;
+  dom.ddMeta.textContent = [
+    info.uploader,
+    info.durationSeconds ? formatDuration(info.durationSeconds) : null,
+  ].filter(Boolean).join(" · ");
+
+  const chosen = defaultChoice(info);
+
+  dom.ddVideo.textContent = "";
+  if (info.videoOptions.length === 0) {
+    addOptionRow(dom.ddVideo, "best", ["MP4", "melhor qualidade", "—"], chosen === "best");
+  }
+  for (const option of info.videoOptions) {
+    addOptionRow(
+      dom.ddVideo,
+      String(option.height),
+      ["MP4", `${option.height}p`, sizeLabel(option.sizeBytes, true)],
+      chosen === String(option.height),
+    );
+  }
+
+  dom.ddAudio.textContent = "";
+  const abr = info.audioBitrateKbps ? `${info.audioBitrateKbps} kbps` : "original";
+  addOptionRow(dom.ddAudio, "audio:mp3", ["MP3", "alta qualidade", sizeLabel(info.audioSizeBytes, true)], chosen === "audio:mp3");
+  addOptionRow(dom.ddAudio, "audio:original", ["Original", abr, sizeLabel(info.audioSizeBytes, true)], chosen === "audio:original");
+
+  dom.ddThumbnail.checked = downloadChoices.thumbnail;
+
+  const hasSubs = info.subtitles.length > 0;
+  dom.ddSubs.hidden = !hasSubs;
+  dom.ddSubsNone.hidden = hasSubs;
+  dom.ddSubsLang.textContent = "";
+  for (const sub of info.subtitles) {
+    const option = document.createElement("option");
+    option.value = sub.code;
+    option.textContent = sub.auto ? `${sub.name} (automática)` : sub.name;
+    dom.ddSubsLang.append(option);
+  }
+  // preferencia de idioma: portugues, depois ingles, senao o primeiro da lista
+  const preferred =
+    info.subtitles.find((sub) => sub.code.startsWith("pt")) ??
+    info.subtitles.find((sub) => sub.code.startsWith("en"));
+  if (preferred) dom.ddSubsLang.value = preferred.code;
+  dom.ddSubsOn.checked = hasSubs && downloadChoices.subtitles;
+
+  dom.ddRemember.checked = false;
+  dom.dialog.showModal();
+}
+
+function closeDownloadDialog(): void {
+  dialogInfo = null;
+  if (dom.dialog.open) dom.dialog.close();
+}
+
+async function addDownloadNow(
+  url: string,
+  choices: { quality: DownloadQuality; audioFormat: AudioFormat; thumbnail: boolean; subtitleLang: string | null },
+): Promise<void> {
   try {
     downloads = await api.addDownload({
       url,
-      quality: dom.downloadQuality.value as DownloadQuality,
+      quality: choices.quality,
+      audioFormat: choices.audioFormat,
+      thumbnail: choices.thumbnail,
+      subtitleLang: choices.subtitleLang,
       addToConversionQueue: dom.downloadToQueue.checked,
     });
     dom.downloadUrl.value = "";
-    renderDownloads();
+    setDownloadMessage(null);
+    setDownloadTab("active");
   } catch (error) {
-    showNote("warning", "download", describeError(error));
+    setDownloadMessage(describeError(error));
+  }
+}
+
+async function confirmDownloadDialog(): Promise<void> {
+  const info = dialogInfo;
+  if (!info) return;
+
+  const picked = dom.dialog.querySelector<HTMLInputElement>('input[name="dd-quality"]:checked');
+  const value = picked?.value ?? "best";
+  const isAudio = value.startsWith("audio:");
+
+  const choices = {
+    quality: isAudio ? "audio" : value,
+    audioFormat: (isAudio ? value.slice("audio:".length) : downloadChoices.audioFormat) as AudioFormat,
+    thumbnail: dom.ddThumbnail.checked,
+    subtitleLang:
+      info.subtitles.length > 0 && dom.ddSubsOn.checked ? dom.ddSubsLang.value : null,
+  };
+
+  downloadChoices.quality = choices.quality;
+  downloadChoices.audioFormat = choices.audioFormat;
+  downloadChoices.thumbnail = choices.thumbnail;
+  downloadChoices.subtitles = choices.subtitleLang != null;
+  if (dom.ddRemember.checked) downloadChoices.askFirst = false;
+  dom.downloadAsk.checked = downloadChoices.askFirst;
+
+  void api.writePreferences({
+    downloadQuality: choices.quality,
+    downloadAudioFormat: choices.audioFormat,
+    downloadThumbnail: choices.thumbnail,
+    downloadSubtitles: choices.subtitleLang != null,
+    skipDownloadDialog: !downloadChoices.askFirst,
+  });
+
+  closeDownloadDialog();
+  await addDownloadNow(info.url, choices);
+}
+
+async function submitDownload(): Promise<void> {
+  const url = dom.downloadUrl.value.trim();
+  if (!url) return;
+  setDownloadMessage(null);
+
+  // sem janela: usa as escolhas anteriores (legenda precisa da janela: o
+  // idioma so se sabe depois de analisar o link)
+  if (!downloadChoices.askFirst) {
+    await addDownloadNow(url, {
+      quality: downloadChoices.quality,
+      audioFormat: downloadChoices.audioFormat,
+      thumbnail: downloadChoices.thumbnail,
+      subtitleLang: null,
+    });
+    return;
+  }
+
+  dom.downloadGo.disabled = true;
+  dom.downloadGo.textContent = "Analisando…";
+  try {
+    const info = await api.analyzeDownload(url);
+    if (info.isLive) setDownloadMessage("transmissão ao vivo não é suportada");
+    else openDownloadDialog(info);
+  } catch (error) {
+    setDownloadMessage(describeError(error));
   } finally {
     dom.downloadGo.disabled = false;
+    dom.downloadGo.textContent = "Adicionar";
   }
 }
 
@@ -1040,11 +1443,8 @@ async function initDownloads(): Promise<void> {
   const ytdlp = await api.getYtDlp();
   if (!ytdlp.available) {
     // sem o yt-dlp o resto do app funciona igual; so o download fica indisponivel
-    dom.ytdlpMissing.hidden = false;
-    dom.ytdlpMissing.textContent =
-      "yt-dlp não encontrado. Instale com: brew install yt-dlp  (depois reabra o app).";
+    setDownloadMessage("yt-dlp não encontrado. Instale com: brew install yt-dlp  (depois reabra o app).");
     dom.downloadUrl.disabled = true;
-    dom.downloadQuality.disabled = true;
     dom.downloadGo.disabled = true;
     return;
   }
@@ -1056,9 +1456,15 @@ async function initDownloads(): Promise<void> {
 // --------------------------------------------------------------------------- //
 
 function wireEvents(): void {
-  dom.search.addEventListener("input", () => {
-    state.filter = dom.search.value.trim();
-    renderPresets();
+  dom.navConverter.addEventListener("click", () => showView("converter"));
+  dom.navDownloader.addEventListener("click", () => showView("downloader"));
+
+  dom.formatSelect.addEventListener("change", () => {
+    void selectFormat(Number(dom.formatSelect.value));
+  });
+  dom.presetSelect.addEventListener("change", () => {
+    const value = dom.presetSelect.value;
+    void selectPreset(value === "" ? null : Number(value));
   });
 
   dom.addFiles.addEventListener("click", () => void refreshQueue(api.addFilesDialog()));
@@ -1138,11 +1544,15 @@ function wireEvents(): void {
     event.preventDefault();
     void submitDownload();
   });
-  dom.downloadQuality.addEventListener("change", () => {
-    void api.writePreferences({ downloadQuality: dom.downloadQuality.value as DownloadQuality });
-  });
+  dom.tabActive.addEventListener("click", () => setDownloadTab("active"));
+  dom.tabDone.addEventListener("click", () => setDownloadTab("done"));
+
   dom.downloadToQueue.addEventListener("change", () => {
     void api.writePreferences({ sendDownloadsToQueue: dom.downloadToQueue.checked });
+  });
+  dom.downloadAsk.addEventListener("change", () => {
+    downloadChoices.askFirst = dom.downloadAsk.checked;
+    void api.writePreferences({ skipDownloadDialog: !dom.downloadAsk.checked });
   });
   dom.downloadPickDir.addEventListener("click", async () => {
     const dir = await api.pickOutputDir();
@@ -1152,6 +1562,12 @@ function wireEvents(): void {
     }
   });
   dom.downloadClear.addEventListener("click", () => void refreshDownloads(api.clearFinishedDownloads()));
+  dom.downloadCancelAll.addEventListener("click", () => void api.cancelAllDownloads());
+
+  dom.ddGo.addEventListener("click", () => void confirmDownloadDialog());
+  dom.ddCancel.addEventListener("click", closeDownloadDialog);
+  dom.ddClose.addEventListener("click", closeDownloadDialog);
+  dom.dialog.addEventListener("close", () => { dialogInfo = null; });
 
   api.onDownloadChanged(onDownloadChanged);
   api.onDownloadProgress(onDownloadProgress);
@@ -1167,12 +1583,12 @@ function wireEvents(): void {
   });
 }
 
-async function applyPreferences(): Promise<void> {
+async function applyPreferences(): Promise<Preferences | null> {
   let prefs: Preferences;
   try {
     prefs = await api.readPreferences();
   } catch {
-    return; // preferencias sao conveniencia; sem elas o app funciona igual
+    return null; // preferencias sao conveniencia; sem elas o app funciona igual
   }
 
   dom.preferHardware.checked = prefs.preferHardware;
@@ -1181,19 +1597,43 @@ async function applyPreferences(): Promise<void> {
   state.outputDir = prefs.outputDir;
   state.clearFinishedOnDone = prefs.clearFinishedOnDone;
   dom.clearOnDone.checked = prefs.clearFinishedOnDone;
-  dom.downloadQuality.value = prefs.downloadQuality;
+  downloadChoices.quality = prefs.downloadQuality;
+  downloadChoices.audioFormat = prefs.downloadAudioFormat;
+  downloadChoices.thumbnail = prefs.downloadThumbnail;
+  downloadChoices.subtitles = prefs.downloadSubtitles;
+  downloadChoices.askFirst = !prefs.skipDownloadDialog;
+  dom.downloadAsk.checked = downloadChoices.askFirst;
   dom.downloadToQueue.checked = prefs.sendDownloadsToQueue;
 
-  if (prefs.lastProfileId != null) {
-    const exists = state.groups.some((group) =>
-      group.items.some((item) => item.profileId === prefs.lastProfileId),
-    );
-    if (exists) {
-      state.selectedPresetId = prefs.lastProfileId;
-      renderPresets();
-      scrollSelectedPresetIntoView();
+  return prefs;
+}
+
+/** Volta ao ultimo formato/preset; sem historico, comeca em MP4. */
+async function restoreTarget(prefs: Preferences | null): Promise<void> {
+  const allFormats = state.formatGroups.flatMap((group) => group.items);
+  let formatId: number | null = null;
+  let presetId: number | null = null;
+
+  if (prefs?.lastProfileId != null) {
+    const preset = state.groups
+      .flatMap((group) => group.items)
+      .find((item) => item.profileId === prefs.lastProfileId);
+    if (preset) {
+      presetId = preset.profileId;
+      formatId = preset.formatId ?? DEVICES_FORMAT;
     }
   }
+
+  const known = (id: number): boolean =>
+    id === DEVICES_FORMAT ? presetsForFormat(DEVICES_FORMAT).length > 0 : allFormats.some((f) => f.formatId === id);
+
+  if (formatId == null && prefs?.lastFormatId != null && known(prefs.lastFormatId)) {
+    formatId = prefs.lastFormatId;
+  }
+  if (formatId == null) {
+    formatId = (allFormats.find((f) => f.title === "MP4") ?? allFormats[0])?.formatId ?? null;
+  }
+  if (formatId != null) await selectFormat(formatId, presetId);
 }
 
 async function boot(): Promise<void> {
@@ -1214,18 +1654,20 @@ async function boot(): Promise<void> {
 
   try {
     state.groups = await api.listPresets();
-    renderPresets();
+    state.formatGroups = await api.listFormats();
+    renderFormatSelect();
   } catch (error) {
-    showNote("warning", "presets", describeError(error));
+    showNote("warning", "formatos", describeError(error));
   }
 
-  await applyPreferences();
+  const prefs = await applyPreferences();
+  await restoreTarget(prefs);
   await refreshQueue(api.listQueue());
 
   try {
     await initDownloads();
   } catch (error) {
-    showNote("warning", "download", describeError(error));
+    setDownloadMessage(describeError(error));
   }
 }
 

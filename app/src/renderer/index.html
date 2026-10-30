@@ -10,172 +10,261 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="brand">
-        <span class="logo" aria-hidden="true"></span>
-        <h1>Videoimagem UniConverter</h1>
-      </div>
-      <div class="env" id="env">verificando ambiente…</div>
-    </header>
+    <div class="app">
+      <!-- ------------------------------ menu ------------------------------- -->
+      <nav class="sidebar" aria-label="Seções">
+        <div class="sidebar-drag"></div>
 
-    <main class="layout">
-      <!-- ----------------------------- presets ----------------------------- -->
-      <aside class="panel presets">
-        <label class="search">
-          <input
-            type="search"
-            id="preset-search"
-            placeholder="Buscar preset (iPhone, MP4, ProRes…)"
-            autocomplete="off"
-          />
-        </label>
-        <div class="preset-list" id="preset-list" role="listbox" aria-label="Presets"></div>
-        <footer class="preset-count" id="preset-count"></footer>
-      </aside>
+        <button type="button" class="nav-item active" data-view="converter" id="nav-converter">
+          <span class="nav-icon" aria-hidden="true">⇄</span>
+          <span>Conversor</span>
+        </button>
+        <button type="button" class="nav-item" data-view="downloader" id="nav-downloader">
+          <span class="nav-icon" aria-hidden="true">↓</span>
+          <span>Downloader</span>
+          <span class="nav-badge" id="nav-download-badge" hidden></span>
+        </button>
 
-      <!-- ------------------------------ work ------------------------------- -->
-      <section class="panel work">
-        <!-- download -->
-        <details class="downloader" id="downloader" open>
-          <summary>Baixar da web</summary>
+        <div class="sidebar-foot">
+          <div class="env" id="env">verificando ambiente…</div>
+        </div>
+      </nav>
 
-          <div class="notes" id="ytdlp-missing" hidden></div>
+      <main class="content">
+        <!-- ============================ CONVERSOR ============================ -->
+        <section class="view" id="view-converter">
+          <header class="view-head">
+            <h1>Conversor</h1>
+          </header>
 
-          <form class="download-form" id="download-form">
-            <input
-              type="url"
-              id="download-url"
-              placeholder="Cole o link do vídeo…"
-              autocomplete="off"
-              spellcheck="false"
-              required
-            />
-            <select id="download-quality" aria-label="Qualidade">
-              <option value="best">Melhor qualidade</option>
-              <option value="2160">até 4K (2160p)</option>
-              <option value="1440">até 1440p</option>
-              <option value="1080">até 1080p</option>
-              <option value="720">até 720p</option>
-              <option value="480">até 480p</option>
-              <option value="audio">Só o áudio</option>
-            </select>
-            <button type="submit" class="btn primary small" id="download-go">Baixar</button>
-          </form>
+          <div class="view-body">
+            <!-- fila -->
+            <div class="section-head">
+              <h2>Arquivos</h2>
+              <div class="section-actions">
+                <button type="button" class="btn small" id="add-files">Adicionar…</button>
+                <button type="button" class="btn small ghost" id="clear-finished" hidden>
+                  Limpar concluídos
+                </button>
+                <button type="button" class="btn small ghost" id="clear-queue" hidden>Limpar</button>
+              </div>
+            </div>
 
-          <div class="download-options">
+            <div class="dropzone" id="dropzone">
+              <div class="dropzone-empty" id="dropzone-empty">
+                <strong>Arraste arquivos aqui</strong>
+                <span>pode ser vários de uma vez</span>
+              </div>
+              <ul class="queue" id="queue" hidden></ul>
+            </div>
+
+            <!-- configuracoes de saida -->
+            <fieldset class="export">
+              <legend>Configurações de saída</legend>
+
+              <label class="export-row">
+                <span class="export-label">Formato</span>
+                <select id="format-select" aria-label="Formato"></select>
+              </label>
+              <label class="export-row">
+                <span class="export-label">Predefinição</span>
+                <select id="preset-select" aria-label="Predefinição"></select>
+              </label>
+              <p class="export-hint" id="export-hint"></p>
+            </fieldset>
+
+            <!-- ajustes -->
+            <div class="settings" id="settings" hidden>
+              <div class="section-head">
+                <h2 id="target-title">—</h2>
+                <div class="toggles">
+                  <label class="toggle">
+                    <input type="checkbox" id="prefer-hardware" />
+                    <span>Aceleração por hardware</span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" id="allow-passthrough" checked />
+                    <span>Copiar stream quando possível</span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" id="clear-on-done" />
+                    <span>Limpar a fila ao terminar</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="groups">
+                <fieldset class="group">
+                  <legend>Vídeo</legend>
+                  <label>Codec <select id="videoEncoder"></select></label>
+                  <label>Resolução <select id="resolution"></select></label>
+                  <label>Taxa de quadros <select id="frameRate"></select></label>
+                  <label>Bitrate <select id="videoBitrateKbps"></select></label>
+                  <label>Encaixe
+                    <select id="fitMode">
+                      <option value="fit">Caber (barras)</option>
+                      <option value="fill">Preencher (corta)</option>
+                      <option value="stretch">Esticar</option>
+                    </select>
+                  </label>
+                </fieldset>
+
+                <fieldset class="group">
+                  <legend>Áudio</legend>
+                  <label>Codec <select id="audioEncoder"></select></label>
+                  <label>Bitrate <select id="audioBitrateKbps"></select></label>
+                  <label>Sample rate <select id="sampleRateHz"></select></label>
+                  <label>Canais <select id="channels"></select></label>
+                </fieldset>
+              </div>
+
+              <div class="notes" id="notes"></div>
+
+              <details class="command">
+                <summary>Comando ffmpeg</summary>
+                <pre id="command-preview"></pre>
+              </details>
+
+              <div class="output">
+                <span class="output-path" id="output-path"></span>
+                <button type="button" class="btn ghost small" id="pick-dir">Pasta de saída…</button>
+                <button type="button" class="btn ghost small" id="reset-dir" hidden>
+                  Usar a pasta de origem
+                </button>
+              </div>
+            </div>
+
+            <!-- barra de execucao -->
+            <div class="runbar">
+              <div class="progress" id="progress" hidden>
+                <div class="bar"><div class="fill" id="progress-fill"></div></div>
+                <span class="progress-text" id="progress-text"></span>
+              </div>
+              <div class="actions">
+                <button type="button" class="btn primary" id="convert" disabled>Converter</button>
+                <button type="button" class="btn danger" id="cancel-all" hidden>Cancelar tudo</button>
+              </div>
+            </div>
+
+            <details class="log" id="log-box" hidden>
+              <summary>Log do ffmpeg</summary>
+              <pre id="log"></pre>
+            </details>
+          </div>
+        </section>
+
+        <!-- ============================ DOWNLOADER =========================== -->
+        <section class="view" id="view-downloader" hidden>
+          <header class="view-head dl-head">
+            <form class="download-form" id="download-form">
+              <input
+                type="url"
+                id="download-url"
+                placeholder="Cole o link do vídeo…"
+                autocomplete="off"
+                spellcheck="false"
+                required
+              />
+              <button type="submit" class="btn primary small" id="download-go">Adicionar</button>
+            </form>
+
+            <div class="segmented" role="tablist" aria-label="Downloads">
+              <button type="button" role="tab" class="segment active" id="dl-tab-active" data-tab="active" aria-selected="true">
+                Baixando <span class="segment-count" id="dl-count-active"></span>
+              </button>
+              <button type="button" role="tab" class="segment" id="dl-tab-done" data-tab="done" aria-selected="false">
+                Concluídos <span class="segment-count" id="dl-count-done"></span>
+              </button>
+            </div>
+          </header>
+
+          <div class="view-body dl-body">
+            <div class="notes" id="ytdlp-missing" hidden></div>
+
+            <div class="dl-empty" id="download-empty">
+              <strong id="download-empty-title">Nenhum download em andamento</strong>
+              <span id="download-empty-hint">Cole o link de um vídeo acima para começar.</span>
+            </div>
+
+            <ul class="queue download-list" id="download-list" hidden></ul>
+          </div>
+
+          <footer class="dl-foot">
             <label class="toggle">
               <input type="checkbox" id="download-to-queue" />
-              <span>Mandar para a fila de conversão ao terminar</span>
+              <span>Baixar e depois converter</span>
             </label>
-            <span class="output-path" id="download-dir"></span>
-            <button type="button" class="btn ghost small" id="download-pick-dir">Pasta…</button>
+            <label class="toggle">
+              <input type="checkbox" id="download-ask" checked />
+              <span>Perguntar as opções ao adicionar</span>
+            </label>
+            <span class="dl-spacer"></span>
+            <span class="dl-dir-label">Local do arquivo:</span>
+            <button type="button" class="btn ghost small dl-dir" id="download-pick-dir" title="Trocar a pasta">
+              <span id="download-dir">—</span>
+            </button>
             <button type="button" class="btn ghost small" id="download-clear" hidden>
               Limpar concluídos
             </button>
-          </div>
-
-          <ul class="queue download-list" id="download-list" hidden></ul>
-        </details>
-
-        <!-- fila -->
-        <div class="section-head">
-          <h2>Fila</h2>
-          <div class="section-actions">
-            <button type="button" class="btn small" id="add-files">Adicionar…</button>
-            <button type="button" class="btn small ghost" id="clear-finished" hidden>
-              Limpar concluídos
+            <button type="button" class="btn danger small" id="download-cancel-all" hidden>
+              Cancelar tudo
             </button>
-            <button type="button" class="btn small ghost" id="clear-queue" hidden>Limpar</button>
+          </footer>
+        </section>
+      </main>
+    </div>
+
+    <!-- ==================== janela de opcoes do download ==================== -->
+    <dialog class="dialog" id="download-dialog" aria-labelledby="dd-title">
+      <header class="dialog-head">
+        <h2 id="dd-title">—</h2>
+        <button type="button" class="icon-btn" id="dd-close" aria-label="Fechar">×</button>
+      </header>
+
+      <div class="dialog-body">
+        <div class="dd-meta" id="dd-meta"></div>
+
+        <section class="dd-section">
+          <h3><span aria-hidden="true">▶</span> Baixar vídeo</h3>
+          <div class="dd-options" id="dd-video" role="radiogroup" aria-label="Vídeo"></div>
+        </section>
+
+        <section class="dd-section">
+          <h3><span aria-hidden="true">♪</span> Baixar áudio</h3>
+          <div class="dd-options" id="dd-audio" role="radiogroup" aria-label="Áudio"></div>
+        </section>
+
+        <section class="dd-section">
+          <h3><span aria-hidden="true">▣</span> Baixar imagem</h3>
+          <label class="dd-check">
+            <input type="checkbox" id="dd-thumbnail" />
+            <span>Miniatura do vídeo (JPG)</span>
+          </label>
+        </section>
+
+        <section class="dd-section">
+          <h3><span aria-hidden="true">T</span> Baixar legendas</h3>
+          <div class="dd-subs" id="dd-subs">
+            <label class="dd-check">
+              <input type="checkbox" id="dd-subs-on" />
+              <span>Legendas</span>
+            </label>
+            <select id="dd-subs-lang" aria-label="Idioma da legenda"></select>
           </div>
-        </div>
+          <p class="dd-none" id="dd-subs-none" hidden>Este vídeo não tem legendas.</p>
+        </section>
 
-        <div class="dropzone" id="dropzone">
-          <div class="dropzone-empty" id="dropzone-empty">
-            <strong>Arraste arquivos aqui</strong>
-            <span>pode ser vários de uma vez</span>
-          </div>
-          <ul class="queue" id="queue" hidden></ul>
-        </div>
+        <label class="dd-check dd-remember">
+          <input type="checkbox" id="dd-remember" />
+          <span>Usar estas escolhas sempre e não perguntar de novo</span>
+        </label>
+      </div>
 
-        <!-- ajustes -->
-        <div class="settings" id="settings" hidden>
-          <div class="section-head">
-            <h2 id="target-title">—</h2>
-            <div class="toggles">
-              <label class="toggle">
-                <input type="checkbox" id="prefer-hardware" />
-                <span>Aceleração por hardware</span>
-              </label>
-              <label class="toggle">
-                <input type="checkbox" id="allow-passthrough" checked />
-                <span>Copiar stream quando possível</span>
-              </label>
-              <label class="toggle">
-                <input type="checkbox" id="clear-on-done" />
-                <span>Limpar a fila ao terminar</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="groups">
-            <fieldset class="group">
-              <legend>Vídeo</legend>
-              <label>Codec <select id="videoEncoder"></select></label>
-              <label>Resolução <select id="resolution"></select></label>
-              <label>Taxa de quadros <select id="frameRate"></select></label>
-              <label>Bitrate <select id="videoBitrateKbps"></select></label>
-              <label>Encaixe
-                <select id="fitMode">
-                  <option value="fit">Caber (barras)</option>
-                  <option value="fill">Preencher (corta)</option>
-                  <option value="stretch">Esticar</option>
-                </select>
-              </label>
-            </fieldset>
-
-            <fieldset class="group">
-              <legend>Áudio</legend>
-              <label>Codec <select id="audioEncoder"></select></label>
-              <label>Bitrate <select id="audioBitrateKbps"></select></label>
-              <label>Sample rate <select id="sampleRateHz"></select></label>
-              <label>Canais <select id="channels"></select></label>
-            </fieldset>
-          </div>
-
-          <div class="notes" id="notes"></div>
-
-          <details class="command">
-            <summary>Comando ffmpeg</summary>
-            <pre id="command-preview"></pre>
-          </details>
-
-          <div class="output">
-            <span class="output-path" id="output-path"></span>
-            <button type="button" class="btn ghost small" id="pick-dir">Pasta de saída…</button>
-            <button type="button" class="btn ghost small" id="reset-dir" hidden>
-              Usar a pasta de origem
-            </button>
-          </div>
-        </div>
-
-        <!-- barra de execucao -->
-        <div class="runbar">
-          <div class="progress" id="progress" hidden>
-            <div class="bar"><div class="fill" id="progress-fill"></div></div>
-            <span class="progress-text" id="progress-text"></span>
-          </div>
-          <div class="actions">
-            <button type="button" class="btn primary" id="convert" disabled>Converter</button>
-            <button type="button" class="btn danger" id="cancel-all" hidden>Cancelar tudo</button>
-          </div>
-        </div>
-
-        <details class="log" id="log-box" hidden>
-          <summary>Log do ffmpeg</summary>
-          <pre id="log"></pre>
-        </details>
-      </section>
-    </main>
+      <footer class="dialog-foot">
+        <button type="button" class="btn ghost" id="dd-cancel">Cancelar</button>
+        <button type="button" class="btn primary" id="dd-go">Baixar</button>
+      </footer>
+    </dialog>
 
     <script src="renderer.js"></script>
   </body>

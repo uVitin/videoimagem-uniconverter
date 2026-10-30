@@ -9,6 +9,7 @@
 
 import {
   fetchMediaInfo,
+  type AudioFormat,
   lastErrorLine,
   normalizeUrl,
   runDownload,
@@ -25,6 +26,9 @@ export interface DownloadItem {
   url: string;
   quality: DownloadQuality;
   outputDir: string;
+  audioFormat?: AudioFormat;
+  thumbnail: boolean;
+  subtitleLang: string | null;
   /** o titulo real so e conhecido depois da analise */
   title?: string;
   info?: MediaInfo;
@@ -56,6 +60,11 @@ export interface AddDownloadRequest {
   quality: DownloadQuality;
   outputDir: string;
   addToConversionQueue?: boolean;
+  audioFormat?: AudioFormat;
+  thumbnail?: boolean;
+  subtitleLang?: string | null;
+  /** analise ja feita pela interface; evita analisar o mesmo link duas vezes */
+  info?: MediaInfo;
 }
 
 let idCounter = 0;
@@ -96,6 +105,10 @@ export class DownloadManager {
       outputDir: request.outputDir,
       status: "pending",
       addToConversionQueue: request.addToConversionQueue === true,
+      thumbnail: request.thumbnail === true,
+      subtitleLang: request.subtitleLang ?? null,
+      ...(request.audioFormat ? { audioFormat: request.audioFormat } : {}),
+      ...(request.info ? { info: request.info, title: request.info.title } : {}),
     };
     this.items.push(item);
     this.events.onItemChanged({ ...item });
@@ -175,13 +188,17 @@ export class DownloadManager {
     // 1) analisar: valida a URL de verdade e descobre o titulo antes de baixar
     this.change(item, { status: "analyzing" });
     let info: MediaInfo;
-    try {
-      info = await fetchMediaInfo(this.context.ytdlpPath, item.url);
-    } catch (error) {
-      this.finish(item, "failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return;
+    if (item.info) {
+      info = item.info;
+    } else {
+      try {
+        info = await fetchMediaInfo(this.context.ytdlpPath, item.url);
+      } catch (error) {
+        this.finish(item, "failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return;
+      }
     }
 
     if (this.canceledIds.has(item.id)) {
@@ -200,6 +217,9 @@ export class DownloadManager {
       url: item.url,
       outputDir: item.outputDir,
       quality: item.quality,
+      thumbnail: item.thumbnail,
+      subtitleLang: item.subtitleLang,
+      ...(item.audioFormat ? { audioFormat: item.audioFormat } : {}),
       ...(this.context.ffmpegPath ? { ffmpegPath: this.context.ffmpegPath } : {}),
       onProgress: (progress) => {
         item.progress = progress;

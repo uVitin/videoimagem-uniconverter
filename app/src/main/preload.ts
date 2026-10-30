@@ -10,6 +10,7 @@ import type {
   DownloadProgressEvent,
   DownloadRequestPayload,
   EnvironmentInfo,
+  FormatGroup,
   ItemLogEvent,
   ItemProgressEvent,
   Preferences,
@@ -17,6 +18,7 @@ import type {
   ResolveRequestPayload,
   ResolveResponse,
   UiDownloadItem,
+  UiMediaInfo,
   UiQueueItem,
   YtDlpInfo,
 } from "./ipc-types";
@@ -28,6 +30,7 @@ const api = {
     ipcRenderer.invoke("prefs:write", patch),
 
   listPresets: (): Promise<PresetGroup[]> => ipcRenderer.invoke("presets:list"),
+  listFormats: (): Promise<FormatGroup[]> => ipcRenderer.invoke("formats:list"),
   resolvePreset: (payload: ResolveRequestPayload): Promise<ResolveResponse> =>
     ipcRenderer.invoke("preset:resolve", payload),
 
@@ -52,6 +55,8 @@ const api = {
 
   getYtDlp: (): Promise<YtDlpInfo> => ipcRenderer.invoke("ytdlp:info"),
   listDownloads: (): Promise<UiDownloadItem[]> => ipcRenderer.invoke("download:list"),
+  analyzeDownload: (url: string): Promise<UiMediaInfo> =>
+    ipcRenderer.invoke("download:analyze", url),
   addDownload: (payload: DownloadRequestPayload): Promise<UiDownloadItem[]> =>
     ipcRenderer.invoke("download:add", payload),
   cancelDownload: (id: string): Promise<boolean> => ipcRenderer.invoke("download:cancel", id),

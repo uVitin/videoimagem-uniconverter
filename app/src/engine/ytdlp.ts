@@ -25,11 +25,8 @@ export interface YtDlpBinary {
   version: string;
 }
 
-export type DownloadQuality = "best" | "2160" | "1440" | "1080" | "720" | "480" | "audio";
-
-export const DOWNLOAD_QUALITIES: readonly DownloadQuality[] = [
-  "best", "2160", "1440", "1080", "720", "480", "audio",
-];
+/** "best", "audio" ou a altura maxima em pixels, como "1080" */
+export type DownloadQuality = "best" | "audio" | `${number}`;
 
 // --------------------------------------------------------------------------- //
 // localizar o binario
@@ -104,11 +101,25 @@ export function normalizeUrl(raw: string): string {
 }
 
 export function isDownloadQuality(value: unknown): value is DownloadQuality {
-  return typeof value === "string" && (DOWNLOAD_QUALITIES as readonly string[]).includes(value);
+  return typeof value === "string" && (value === "best" || value === "audio" || /^\d{3,4}$/.test(value));
 }
 
 // --------------------------------------------------------------------------- //
 // informacoes do video
+
+export interface VideoOption {
+  height: number;
+  /** tamanho estimado do arquivo final (video + melhor audio); ausente se o site nao informa */
+  sizeBytes?: number;
+}
+
+export interface SubtitleOption {
+  /** codigo para --sub-langs, ex. "pt" ou "pt-orig" */
+  code: string;
+  name: string;
+  /** legenda gerada automaticamente, nao feita por pessoas */
+  auto: boolean;
+}
 
 export interface MediaInfo {
   title: string;
@@ -117,6 +128,11 @@ export interface MediaInfo {
   thumbnail?: string;
   /** alturas de video disponiveis, da maior para a menor */
   heights: number[];
+  /** o mesmo, com o tamanho estimado de cada uma */
+  videoOptions: VideoOption[];
+  audioSizeBytes?: number;
+  audioBitrateKbps?: number;
+  subtitles: SubtitleOption[];
   isLive: boolean;
 }
 
@@ -127,23 +143,91 @@ export function lastErrorLine(stderr: string): string {
   return (error ?? lines[lines.length - 1] ?? "falha desconhecida").replace(/^ERROR:\s*/, "");
 }
 
+/**
+ * Legendas feitas por pessoas, todas. Das automaticas so a do idioma original:
+ * o YouTube lista uma traducao automatica para cada idioma do mundo, e uma
+ * lista de 150 itens num seletor nao ajuda ninguem.
+ */
+function parseSubtitles(raw: Record<string, unknown>): SubtitleOption[] {
+  const out: SubtitleOption[] = [];
+  const nameOf = (entries: unknown, fallback: string): string => {
+    const first = Array.isArray(entries) ? (entries[0] as Record<string, unknown> | undefined) : undefined;
+    return typeof first?.name === "string" && first.name ? first.name : fallback;
+  };
+
+  const manual = raw.subtitles;
+  if (manual && typeof manual === "object") {
+    for (const [code, entries] of Object.entries(manual)) {
+      if (code === "live_chat") continue;
+      out.push({ code, name: nameOf(entries, code), auto: false });
+    }
+  }
+
+  const auto = raw.automatic_captions;
+  const language = typeof raw.language === "string" ? raw.language : null;
+  if (auto && typeof auto === "object") {
+    for (const [code, entries] of Object.entries(auto)) {
+      const original = code.endsWith("-orig") || (language !== null && code === language);
+      if (original && !out.some((entry) => entry.code === code || entry.code === language)) {
+        out.push({ code, name: nameOf(entries, code), auto: true });
+      }
+    }
+  }
+  return out;
+}
+
 export function parseMediaInfo(json: string): MediaInfo {
   const raw = JSON.parse(json) as Record<string, unknown>;
   const formats = Array.isArray(raw.formats) ? (raw.formats as Record<string, unknown>[]) : [];
 
-  const heights = [
-    ...new Set(
-      formats
-        .map((format) => format.height)
-        .filter((h): h is number => typeof h === "number" && h > 0),
-    ),
-  ].sort((a, b) => b - a);
+  const sizeOf = (format: Record<string, unknown>): number | undefined => {
+    const exact = format.filesize;
+    const approx = format.filesize_approx;
+    if (typeof exact === "number" && exact > 0) return exact;
+    if (typeof approx === "number" && approx > 0) return approx;
+    return undefined;
+  };
+
+  // melhor audio (so audio): maior bitrate. O arquivo final leva video + audio.
+  let bestAudio: Record<string, unknown> | undefined;
+  for (const format of formats) {
+    if (format.vcodec !== "none" || format.acodec === "none") continue;
+    const abr = typeof format.abr === "number" ? format.abr : 0;
+    const bestAbr = typeof bestAudio?.abr === "number" ? bestAudio.abr : -1;
+    if (abr > bestAbr) bestAudio = format;
+  }
+  const audioSizeBytes = bestAudio ? sizeOf(bestAudio) : undefined;
+
+  // por altura, o maior arquivo de video; sem vcodec informado conta como video
+  const biggestByHeight = new Map<number, number | undefined>();
+  for (const format of formats) {
+    const height = format.height;
+    if (typeof height !== "number" || height <= 0 || format.vcodec === "none") continue;
+    const size = sizeOf(format);
+    const known = biggestByHeight.get(height);
+    biggestByHeight.set(
+      height,
+      size === undefined ? known : Math.max(known ?? 0, size),
+    );
+  }
+
+  const videoOptions: VideoOption[] = [...biggestByHeight.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([height, size]) => {
+      const option: VideoOption = { height };
+      if (size !== undefined) option.sizeBytes = size + (audioSizeBytes ?? 0);
+      return option;
+    });
 
   const info: MediaInfo = {
     title: typeof raw.title === "string" && raw.title ? raw.title : "sem titulo",
-    heights,
+    heights: videoOptions.map((option) => option.height),
+    videoOptions,
+    subtitles: parseSubtitles(raw),
     isLive: raw.is_live === true,
   };
+  if (audioSizeBytes !== undefined) info.audioSizeBytes = audioSizeBytes;
+  if (typeof bestAudio?.abr === "number") info.audioBitrateKbps = Math.round(bestAudio.abr);
   if (typeof raw.uploader === "string") info.uploader = raw.uploader;
   if (typeof raw.duration === "number") info.durationSeconds = raw.duration;
   if (typeof raw.thumbnail === "string") info.thumbnail = raw.thumbnail;
@@ -171,16 +255,27 @@ export async function fetchMediaInfo(ytdlpPath: string, url: string): Promise<Me
  * Seletor de formato. 'bv*+ba/b' junta o melhor video com o melhor audio e cai
  * no melhor arquivo unico quando o site nao separa as trilhas.
  */
-export function formatSelector(quality: DownloadQuality): string {
-  if (quality === "audio") return "ba[ext=m4a]/ba/b";
+export function formatSelector(quality: DownloadQuality, audioFormat?: AudioFormat): string {
+  // para MP3 parte-se da melhor fonte; para manter o original, prefere-se o m4a (aac)
+  if (quality === "audio") return audioFormat === "mp3" ? "ba/b" : "ba[ext=m4a]/ba/b";
   if (quality === "best") return "bv*+ba/b";
   return `bv*[height<=${quality}]+ba/b[height<=${quality}]/b`;
 }
+
+export type AudioFormat = "mp3" | "original";
+
+const SUB_LANG = /^[A-Za-z0-9_.-]{1,24}$/;
 
 export interface DownloadOptions {
   url: string;
   outputDir: string;
   quality: DownloadQuality;
+  /** so vale quando quality === "audio" */
+  audioFormat?: AudioFormat;
+  /** baixar tambem a miniatura, como .jpg ao lado do video */
+  thumbnail?: boolean;
+  /** codigo da legenda (ver SubtitleOption.code); baixa como .srt ao lado do video */
+  subtitleLang?: string | null;
   /** o yt-dlp precisa do ffmpeg para juntar video+audio e extrair audio */
   ffmpegPath?: string;
 }
@@ -198,7 +293,7 @@ export function buildDownloadArgs(options: DownloadOptions): string[] {
     "--no-simulate",
     // prefere a maior resolucao e, dentro dela, h264/aac: abre em qualquer editor
     "-S", "res,vcodec:h264,acodec:m4a",
-    "-f", formatSelector(options.quality),
+    "-f", formatSelector(options.quality, options.audioFormat),
     "-P", options.outputDir,
     "-o", "%(title).150B [%(id)s].%(ext)s",
     "--progress-template",
@@ -208,10 +303,26 @@ export function buildDownloadArgs(options: DownloadOptions): string[] {
   ];
 
   if (options.quality === "audio") {
-    // 'best' preserva o codec original em vez de recodificar
-    args.push("-x", "--audio-format", "best");
+    if (options.audioFormat === "mp3") {
+      // qualidade 0 = a melhor do LAME (VBR ~245 kbps)
+      args.push("-x", "--audio-format", "mp3", "--audio-quality", "0");
+    } else {
+      // 'best' preserva o codec original em vez de recodificar
+      args.push("-x", "--audio-format", "best");
+    }
   } else {
     args.push("--merge-output-format", "mp4");
+  }
+
+  if (options.thumbnail) args.push("--write-thumbnail", "--convert-thumbnails", "jpg");
+
+  if (options.subtitleLang) {
+    if (!SUB_LANG.test(options.subtitleLang)) throw new Error("idioma de legenda invalido");
+    args.push(
+      "--write-subs", "--write-auto-subs",
+      "--sub-langs", options.subtitleLang,
+      "--convert-subs", "srt",
+    );
   }
 
   if (options.ffmpegPath) args.push("--ffmpeg-location", dirname(options.ffmpegPath));

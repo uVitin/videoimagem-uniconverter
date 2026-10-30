@@ -13,6 +13,7 @@ import { isDownloadQuality, type DownloadQuality } from "../engine/ytdlp";
 
 export interface Preferences {
   lastProfileId: number | null;
+  lastFormatId: number | null;
   outputDir: string | null;
   preferHardware: boolean;
   allowPassthrough: boolean;
@@ -24,10 +25,15 @@ export interface Preferences {
   downloadQuality: DownloadQuality;
   /** mandar o que baixou direto para a fila de conversao */
   sendDownloadsToQueue: boolean;
+  skipDownloadDialog: boolean;
+  downloadAudioFormat: "mp3" | "original";
+  downloadThumbnail: boolean;
+  downloadSubtitles: boolean;
 }
 
 const DEFAULTS: Preferences = {
   lastProfileId: null,
+  lastFormatId: null,
   outputDir: null,
   preferHardware: false,
   allowPassthrough: true,
@@ -36,6 +42,10 @@ const DEFAULTS: Preferences = {
   downloadDir: null,
   downloadQuality: "best",
   sendDownloadsToQueue: false,
+  skipDownloadDialog: false,
+  downloadAudioFormat: "mp3",
+  downloadThumbnail: false,
+  downloadSubtitles: false,
 };
 
 const FIT_MODES = new Set(["fit", "fill", "stretch"]);
@@ -52,6 +62,8 @@ function sanitize(raw: unknown): Preferences {
   return {
     lastProfileId:
       typeof input.lastProfileId === "number" ? input.lastProfileId : DEFAULTS.lastProfileId,
+    lastFormatId:
+      typeof input.lastFormatId === "number" ? input.lastFormatId : DEFAULTS.lastFormatId,
     outputDir: typeof input.outputDir === "string" ? input.outputDir : DEFAULTS.outputDir,
     preferHardware:
       typeof input.preferHardware === "boolean" ? input.preferHardware : DEFAULTS.preferHardware,
@@ -76,6 +88,20 @@ function sanitize(raw: unknown): Preferences {
       typeof input.sendDownloadsToQueue === "boolean"
         ? input.sendDownloadsToQueue
         : DEFAULTS.sendDownloadsToQueue,
+    skipDownloadDialog:
+      typeof input.skipDownloadDialog === "boolean"
+        ? input.skipDownloadDialog
+        : DEFAULTS.skipDownloadDialog,
+    downloadAudioFormat:
+      input.downloadAudioFormat === "original" ? "original" : DEFAULTS.downloadAudioFormat,
+    downloadThumbnail:
+      typeof input.downloadThumbnail === "boolean"
+        ? input.downloadThumbnail
+        : DEFAULTS.downloadThumbnail,
+    downloadSubtitles:
+      typeof input.downloadSubtitles === "boolean"
+        ? input.downloadSubtitles
+        : DEFAULTS.downloadSubtitles,
   };
 }
 

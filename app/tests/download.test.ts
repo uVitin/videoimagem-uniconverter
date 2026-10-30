@@ -165,6 +165,79 @@ describe("parseMediaInfo", () => {
   });
 });
 
+describe("parseMediaInfo: tamanhos, audio e legendas", () => {
+  const json = JSON.stringify({
+    title: "T",
+    language: "pt",
+    formats: [
+      { height: 1080, vcodec: "avc1", acodec: "none", filesize: 100_000_000 },
+      { height: 1080, vcodec: "vp9", acodec: "none", filesize_approx: 80_000_000 },
+      { height: 720, vcodec: "avc1", acodec: "none" },
+      { height: 480, vcodec: "avc1", acodec: "none", filesize: 20_000_000 },
+      { vcodec: "none", acodec: "mp4a", abr: 48, filesize: 1_000_000 },
+      { vcodec: "none", acodec: "mp4a", abr: 128, filesize: 4_000_000 },
+    ],
+    subtitles: { en: [{ name: "English" }], "live_chat": [{}] },
+    automatic_captions: {
+      "pt-orig": [{ name: "Portugues (original)" }],
+      es: [{ name: "Espanhol" }],
+      fr: [{ name: "Frances" }],
+    },
+  });
+
+  it("soma o melhor audio ao maior video de cada altura", () => {
+    const info = parseMediaInfo(json);
+    assert.deepEqual(info.videoOptions, [
+      { height: 1080, sizeBytes: 104_000_000 },
+      { height: 720 }, // o site nao informou o tamanho
+      { height: 480, sizeBytes: 24_000_000 },
+    ]);
+    assert.equal(info.audioSizeBytes, 4_000_000);
+    assert.equal(info.audioBitrateKbps, 128);
+  });
+
+  it("lista legendas manuais e so a automatica do idioma original", () => {
+    const codes = parseMediaInfo(json).subtitles.map((s) => `${s.code}${s.auto ? "*" : ""}`);
+    assert.deepEqual(codes, ["en", "pt-orig*"]);
+  });
+});
+
+describe("buildDownloadArgs: audio, miniatura e legenda", () => {
+  const base = { url: "https://exemplo.com/v", outputDir: "/tmp/saida" };
+
+  it("MP3 converte com a melhor qualidade e parte da melhor fonte", () => {
+    const args = buildDownloadArgs({ ...base, quality: "audio", audioFormat: "mp3" });
+    assert.equal(args[args.indexOf("--audio-format") + 1], "mp3");
+    assert.equal(args[args.indexOf("--audio-quality") + 1], "0");
+    assert.equal(args[args.indexOf("-f") + 1], "ba/b");
+  });
+
+  it("miniatura vira jpg", () => {
+    const args = buildDownloadArgs({ ...base, quality: "best", thumbnail: true });
+    assert.ok(args.includes("--write-thumbnail"));
+    assert.equal(args[args.indexOf("--convert-thumbnails") + 1], "jpg");
+  });
+
+  it("legenda vira srt, no idioma pedido", () => {
+    const args = buildDownloadArgs({ ...base, quality: "best", subtitleLang: "pt-orig" });
+    assert.equal(args[args.indexOf("--sub-langs") + 1], "pt-orig");
+    assert.equal(args[args.indexOf("--convert-subs") + 1], "srt");
+  });
+
+  it("recusa codigo de legenda que nao parece um idioma", () => {
+    assert.throws(
+      () => buildDownloadArgs({ ...base, quality: "best", subtitleLang: "pt --exec rm" }),
+      /legenda/,
+    );
+  });
+
+  it("sem pedir, nao baixa miniatura nem legenda", () => {
+    const args = buildDownloadArgs({ ...base, quality: "best" });
+    assert.ok(!args.includes("--write-thumbnail"));
+    assert.ok(!args.includes("--write-subs"));
+  });
+});
+
 describe("buildDownloadArgs", () => {
   const base = { url: "https://exemplo.com/v", outputDir: "/tmp/saida" };
 

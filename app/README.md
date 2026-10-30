@@ -29,7 +29,7 @@ export VIDEOIMAGEM_FFPROBE=/caminho/para/ffprobe
 ```bash
 npm install
 npm start     # build + abre o app
-npm test      # 74 testes, inclui conversões reais
+npm test      # 90 testes, inclui conversões reais
 npm run build # só compila
 npm run pack  # empacota sem gerar instalador (release/mac/)
 npm run dist  # gera os DMG (x64 + arm64) em release/

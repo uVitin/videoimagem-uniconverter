@@ -2,6 +2,8 @@
 
 export interface PresetListItem {
   profileId: number;
+  /** formato (Format.pro) a que o preset pertence; null = preset de dispositivo sem tabela */
+  formatId: number | null;
   title: string;
   container: string;
   videoEncoder: string | null;
@@ -9,6 +11,24 @@ export interface PresetListItem {
   resolutionLabel: string | null;
   /** 'encoder_fallback' = sem tabela de capacidades */
   linkPath: string;
+}
+
+/** Um formato de saida (o "Formato" do seletor): container + capacidades. */
+export interface FormatListItem {
+  formatId: number;
+  title: string;
+  /** com ponto: ".mp4" */
+  extension: string;
+  categoryId: number;
+  categoryTitle: string;
+  /** quantos presets de dispositivo/plataforma apontam para este formato */
+  presetCount: number;
+}
+
+export interface FormatGroup {
+  categoryId: number;
+  categoryTitle: string;
+  items: FormatListItem[];
 }
 
 export interface PresetGroup {
@@ -90,7 +110,10 @@ export interface ResolveResponse {
 }
 
 export interface ResolveRequestPayload {
-  profileId: number;
+  /** null = "Personalizado": parte dos padroes do formato, sem preset */
+  profileId: number | null;
+  /** obrigatorio quando profileId e null */
+  formatId?: number | null;
   overrides?: Partial<UiChoices>;
   /** item da fila contra o qual fazer a previa; null = previa generica */
   itemId?: string | null;
@@ -143,7 +166,8 @@ export interface BatchSummary {
 }
 
 export interface BatchSettingsPayload {
-  profileId: number;
+  profileId: number | null;
+  formatId?: number | null;
   overrides?: Partial<UiChoices>;
   preferHardware?: boolean;
   fitMode?: "fit" | "fill" | "stretch";
@@ -153,6 +177,7 @@ export interface BatchSettingsPayload {
 
 export interface Preferences {
   lastProfileId: number | null;
+  lastFormatId: number | null;
   outputDir: string | null;
   preferHardware: boolean;
   allowPassthrough: boolean;
@@ -162,9 +187,15 @@ export interface Preferences {
   downloadDir: string | null;
   downloadQuality: DownloadQuality;
   sendDownloadsToQueue: boolean;
+  /** pular a janela de opcoes e baixar com as escolhas anteriores */
+  skipDownloadDialog: boolean;
+  downloadAudioFormat: AudioFormat;
+  downloadThumbnail: boolean;
+  downloadSubtitles: boolean;
 }
 
-export type DownloadQuality = "best" | "2160" | "1440" | "1080" | "720" | "480" | "audio";
+/** "best", "audio" ou a altura maxima em pixels, como "1080" */
+export type DownloadQuality = "best" | "audio" | `${number}`;
 
 export type DownloadStatus = "pending" | "analyzing" | "running" | "done" | "failed" | "canceled";
 
@@ -189,10 +220,40 @@ export interface UiDownloadItem {
   progress: UiDownloadProgress | null;
 }
 
+export type AudioFormat = "mp3" | "original";
+
+export interface UiVideoOption {
+  height: number;
+  sizeBytes?: number;
+}
+
+export interface UiSubtitleOption {
+  code: string;
+  name: string;
+  auto: boolean;
+}
+
+/** o que a janela de opcoes de download mostra, depois de analisar o link */
+export interface UiMediaInfo {
+  url: string;
+  title: string;
+  uploader?: string;
+  durationSeconds?: number;
+  thumbnail?: string;
+  videoOptions: UiVideoOption[];
+  audioSizeBytes?: number;
+  audioBitrateKbps?: number;
+  subtitles: UiSubtitleOption[];
+  isLive: boolean;
+}
+
 export interface DownloadRequestPayload {
   url: string;
   quality: DownloadQuality;
   addToConversionQueue: boolean;
+  audioFormat?: AudioFormat;
+  thumbnail?: boolean;
+  subtitleLang?: string | null;
 }
 
 export interface DownloadProgressEvent {

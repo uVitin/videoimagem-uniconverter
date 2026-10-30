@@ -24,7 +24,7 @@ brew install yt-dlp          # só para o download; o resto funciona sem
 cd app && npm install && npm start
 ```
 
-`npm test` roda 74 testes, incluindo conversões de verdade.
+`npm test` roda 90 testes, incluindo conversões de verdade.
 
 ## Estado
 

@@ -38,7 +38,9 @@ export interface QueueItem {
 }
 
 export interface BatchSettings {
-  profileId: number;
+  /** um preset; ou, sem preset ("Personalizado"), so o formato */
+  profileId?: number | null;
+  formatId?: number | null;
   overrides?: Partial<UserChoices>;
   preferHardware?: boolean;
   fitMode?: "fit" | "fill" | "stretch";
@@ -225,7 +227,11 @@ export class ConversionQueue {
       // diferentes tem de resolver diferente
       const source = item.probe;
       const resolved = resolvePreset(db, {
-        profileId: settings.profileId,
+        ...(settings.profileId != null
+          ? { profileId: settings.profileId }
+          : settings.formatId != null
+            ? { formatId: settings.formatId }
+            : {}),
         overrides: settings.overrides ?? {},
         ...(source ? { source } : {}),
       });
