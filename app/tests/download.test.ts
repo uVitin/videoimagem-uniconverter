@@ -8,13 +8,14 @@
  */
 
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import {
   buildDownloadArgs,
+  bundledYtDlpPath,
   formatSelector,
   lastErrorLine,
   locateYtDlp,
@@ -82,6 +83,20 @@ after(async () => {
 });
 
 // --------------------------------------------------------------------------- //
+
+describe("yt-dlp embarcado", () => {
+  it("acha a copia em Resources/bin quando existe", async () => {
+    const resources = join(workDir, "Resources");
+    await mkdir(join(resources, "bin"), { recursive: true });
+    await writeFile(join(resources, "bin", "yt-dlp"), "x");
+    assert.equal(bundledYtDlpPath(resources), join(resources, "bin", "yt-dlp"));
+  });
+
+  it("devolve null fora do app empacotado ou sem o arquivo", () => {
+    assert.equal(bundledYtDlpPath(undefined), null);
+    assert.equal(bundledYtDlpPath(join(workDir, "nao-existe")), null);
+  });
+});
 
 describe("normalizeUrl", () => {
   it("aceita http e https", () => {

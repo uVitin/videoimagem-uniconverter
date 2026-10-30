@@ -1,10 +1,12 @@
 /**
  * Localiza o ffmpeg e o ffprobe.
  *
- * Nao embarcamos os binarios: o ffmpeg com x264/x265 e GPL, e embarcar
- * obrigaria o app todo a ser GPL. O UniConverter contorna isso chamando um
- * ffmpeg separado (o build publico 'tessus'). Fazemos o mesmo: o usuario
- * instala (`brew install ffmpeg`) e nos encontramos.
+ * O ffmpeg com x264/x265 e GPL. Ele roda como processo separado (nao e
+ * linkado ao app), entao so acompanha o instalador como binario independente,
+ * em `<resources>/bin`. Ordem: variavel de ambiente -> o que vem no app ->
+ * PATH -> pastas comuns. Assim o app funciona em maquina limpa e o
+ * comportamento e o mesmo em todas; em desenvolvimento (sem pasta bin) usa o
+ * ffmpeg instalado (`brew install ffmpeg`).
  */
 
 import { execFile } from "node:child_process";
@@ -33,6 +35,16 @@ function fromEnv(name: "ffmpeg" | "ffprobe"): string | null {
   return value && existsSync(value) ? value : null;
 }
 
+/** ffmpeg/ffprobe que acompanham o app instalado (`<resources>/bin`). */
+export function bundledBinaryPath(
+  resourcesPath: string | undefined,
+  name: "ffmpeg" | "ffprobe",
+): string | null {
+  if (!resourcesPath) return null;
+  const candidate = join(resourcesPath, "bin", name);
+  return existsSync(candidate) ? candidate : null;
+}
+
 async function fromPath(name: string): Promise<string | null> {
   try {
     const { stdout } = await run("/usr/bin/which", [name]);
@@ -52,10 +64,15 @@ function fromSearchDirs(name: string): string | null {
 }
 
 async function locate(name: "ffmpeg" | "ffprobe"): Promise<string> {
-  const found = fromEnv(name) ?? (await fromPath(name)) ?? fromSearchDirs(name);
+  const resources = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  const found =
+    fromEnv(name) ??
+    bundledBinaryPath(resources, name) ??
+    (await fromPath(name)) ??
+    fromSearchDirs(name);
   if (found) return found;
   throw new Error(
-    `nao encontrei o ${name}. Instale com 'brew install ffmpeg' ou aponte ` +
+    `nao encontrei o ${name}. Reinstale o app (ele vem junto), instale com 'brew install ffmpeg' ou aponte ` +
       `${name === "ffmpeg" ? "VIDEOIMAGEM_FFMPEG" : "VIDEOIMAGEM_FFPROBE"} para o binario.`,
   );
 }

@@ -18,13 +18,13 @@ Comece pelo [`app/README.md`](app/README.md) para rodar, e por
 ## Rodar
 
 ```bash
-brew install ffmpeg          # o ffmpeg não é embarcado (licença GPL do x264/x265)
-brew install yt-dlp          # só para o download; o resto funciona sem
+brew install ffmpeg          # só para desenvolver; o app instalado (DMG) já leva ffmpeg e yt-dlp
+brew install yt-dlp          # só para o download em desenvolvimento
                              # (alternativa: binário em bin/ + VIDEOIMAGEM_YTDLP=bin/yt-dlp_macos)
 cd app && npm install && npm start
 ```
 
-`npm test` roda 90 testes, incluindo conversões de verdade.
+`npm test` roda 94 testes, incluindo conversões de verdade.
 
 ## Estado
 

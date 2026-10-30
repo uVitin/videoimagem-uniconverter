@@ -11,3 +11,5 @@ rea/
 # macOS
 .DS_Store
 bin/
+instalador/
+app/vendor/

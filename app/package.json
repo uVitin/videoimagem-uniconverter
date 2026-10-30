@@ -1,7 +1,7 @@
 {
   "name": "videoimagem-uniconverter",
   "version": "0.1.0",
-  "description": "Conversor de video \u2014 engine FFmpeg + UI Electron",
+  "description": "Conversor de video — engine FFmpeg + UI Electron",
   "main": "dist/main/main.js",
   "private": true,
   "scripts": {
@@ -11,7 +11,10 @@
     "clean": "rm -rf dist dist-test release",
     "icon": "./tools/make-icon.sh",
     "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "fetch:ytdlp": "node tools/fetch-ytdlp.mjs",
+    "prepack": "node tools/fetch-ytdlp.mjs && node tools/fetch-ffmpeg.mjs",
+    "predist": "node tools/fetch-ytdlp.mjs && node tools/fetch-ffmpeg.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
@@ -24,7 +27,7 @@
   "build": {
     "appId": "com.videoimagem.uniconverter",
     "productName": "Videoimagem UniConverter",
-    "copyright": "Copyright \u00a9 Videoimagem",
+    "copyright": "Copyright © Videoimagem",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -40,6 +43,18 @@
         "to": "data",
         "filter": [
           "**/*.json"
+        ]
+      },
+      {
+        "from": "vendor/yt-dlp_macos",
+        "to": "bin/yt-dlp"
+      },
+      {
+        "from": "vendor/ffmpeg/${arch}",
+        "to": "bin",
+        "filter": [
+          "ffmpeg",
+          "ffprobe"
         ]
       }
     ],
@@ -58,7 +73,7 @@
       ],
       "identity": null,
       "extendInfo": {
-        "NSHumanReadableCopyright": "Copyright \u00a9 Videoimagem"
+        "NSHumanReadableCopyright": "Copyright © Videoimagem"
       }
     },
     "dmg": {

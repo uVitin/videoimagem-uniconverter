@@ -6,22 +6,26 @@ extraído do Wondershare UniConverter 17 (ver `../01-analise-uniconverter17.md`)
 ## Pré-requisitos
 
 - **Node.js 22+** (o engine usa o test runner nativo)
-- **FFmpeg e ffprobe** no PATH — `brew install ffmpeg`
+- Para desenvolver: **FFmpeg e ffprobe** (`brew install ffmpeg`) e, para a aba de
+  download, **yt-dlp** (`brew install yt-dlp`)
 
-O ffmpeg **não** é embarcado. O build com x264/x265 é GPL, e embarcar obrigaria
-o app inteiro a ser GPL. O UniConverter faz o mesmo: chama um ffmpeg separado
-(no caso deles, o build público `tessus`).
+**O app instalado (DMG) não precisa de nada disso:** `npm run dist` baixa e embute
+yt-dlp, ffmpeg e ffprobe em `Resources/bin` (um conjunto por arquitetura — Intel e
+Apple Silicon), via `tools/fetch-ytdlp.mjs` e `tools/fetch-ffmpeg.mjs`. Os downloads
+ficam em `vendor/` (fora do git) e as versões são fixas nesses scripts; para atualizar,
+mude a versão (ffmpeg) ou apague o arquivo em `vendor/` (yt-dlp) e gere o DMG de novo.
+Os sites mudam toda semana, então refaça o DMG de vez em quando para renovar o yt-dlp.
 
-Para baixar da web também é preciso o **yt-dlp** (`brew install yt-dlp`). Ele é
-opcional: sem ele o app abre normal e só a seção "Baixar da web" fica desativada.
-Os sites mudam toda semana, então mantenha atualizado (`brew upgrade yt-dlp`).
-Para apontar outro binário: `VIDEOIMAGEM_YTDLP`.
+O ffmpeg com x264/x265 é GPL. Ele roda como programa separado (chamado por linha de
+comando), junto do instalador; quem redistribuir o app deve respeitar a GPL dele.
 
-Se o ffmpeg estiver em outro lugar:
+Ordem de busca dos binários: variável de ambiente → embutido no app → PATH → pastas
+comuns do Homebrew/MacPorts:
 
 ```bash
 export VIDEOIMAGEM_FFMPEG=/caminho/para/ffmpeg
 export VIDEOIMAGEM_FFPROBE=/caminho/para/ffprobe
+export VIDEOIMAGEM_YTDLP=/caminho/para/yt-dlp
 ```
 
 ## Comandos
@@ -29,7 +33,7 @@ export VIDEOIMAGEM_FFPROBE=/caminho/para/ffprobe
 ```bash
 npm install
 npm start     # build + abre o app
-npm test      # 90 testes, inclui conversões reais
+npm test      # 94 testes, inclui conversões reais
 npm run build # só compila
 npm run pack  # empacota sem gerar instalador (release/mac/)
 npm run dist  # gera os DMG (x64 + arm64) em release/

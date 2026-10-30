@@ -54,16 +54,28 @@ function fromSearchDirs(): string | null {
   return null;
 }
 
+/**
+ * Copia que viaja dentro do app (Contents/Resources/bin/yt-dlp). E o ultimo
+ * recurso: quem ja tem yt-dlp proprio instalado (e, portanto, mantido) usa o dele.
+ */
+export function bundledYtDlpPath(resourcesPath: string | undefined): string | null {
+  if (!resourcesPath) return null;
+  const candidate = join(resourcesPath, "bin", "yt-dlp");
+  return existsSync(candidate) ? candidate : null;
+}
+
 let cached: YtDlpBinary | null = null;
 
 export async function locateYtDlp(force = false): Promise<YtDlpBinary> {
   if (cached && !force) return cached;
 
-  const path = fromEnv() ?? (await fromPath()) ?? fromSearchDirs();
+  const resources = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  const path =
+    fromEnv() ?? (await fromPath()) ?? fromSearchDirs() ?? bundledYtDlpPath(resources);
   if (!path) {
     throw new Error(
-      "nao encontrei o yt-dlp. Instale com 'brew install yt-dlp' ou aponte " +
-        "VIDEOIMAGEM_YTDLP para o binario.",
+      "nao encontrei o yt-dlp. Reinstale o app (ele vem junto), instale com " +
+        "'brew install yt-dlp' ou aponte VIDEOIMAGEM_YTDLP para o binario.",
     );
   }
 
