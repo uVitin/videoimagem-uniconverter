@@ -22,11 +22,11 @@
     "electron-builder": "^25.1.8",
     "typescript": "^5.9.3"
   },
-  "productName": "Videoimagem UniConverter",
+  "productName": "VideoImagem Downloader",
   "author": "Videoimagem",
   "build": {
     "appId": "com.videoimagem.uniconverter",
-    "productName": "Videoimagem UniConverter",
+    "productName": "VideoImagem Downloader",
     "copyright": "Copyright © Videoimagem",
     "afterPack": "tools/adhoc-sign.mjs",
     "directories": {
@@ -78,7 +78,7 @@
       }
     },
     "dmg": {
-      "title": "Videoimagem UniConverter",
+      "title": "VideoImagem Downloader",
       "contents": [
         {
           "x": 140,

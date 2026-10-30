@@ -1,4 +1,4 @@
-# Videoimagem UniConverter — app
+# VideoImagem Downloader — app
 
 Conversor de vídeo com fila em lote, construído sobre o banco de presets
 extraído do Wondershare UniConverter 17 (ver `../01-analise-uniconverter17.md`).
@@ -147,12 +147,12 @@ empacotado. Para conferir que não está pegando o `data/` de desenvolvimento po
 acidente, rode o app empacotado a partir de outro diretório:
 
 ```bash
-cd /tmp && "/caminho/release/mac/Videoimagem UniConverter.app/Contents/MacOS/Videoimagem UniConverter"
+cd /tmp && "/caminho/release/mac/VideoImagem Downloader.app/Contents/MacOS/VideoImagem Downloader"
 ```
 
 **Os builds saem sem assinatura** (`mac.identity: null`). No primeiro
 abrir, o macOS vai reclamar — botão direito → Abrir, ou
-`xattr -dr com.apple.quarantine "/Applications/Videoimagem UniConverter.app"`.
+`xattr -dr com.apple.quarantine "/Applications/VideoImagem Downloader.app"`.
 Para distribuir de verdade é preciso um certificado Developer ID e notarização.
 
 O ícone em `build/icon.icns` é **placeholder**, gerado por `tools/make-icon.sh`

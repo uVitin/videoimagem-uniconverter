@@ -48,7 +48,7 @@ function createWindow(): BrowserWindow {
     height: 880,
     minWidth: 960,
     minHeight: 680,
-    title: "Videoimagem UniConverter",
+    title: "VideoImagem Downloader",
     titleBarStyle: "hiddenInset",
     backgroundColor: "#16181d",
     // so mostra quando a pagina estiver pronta, para nao piscar branco
