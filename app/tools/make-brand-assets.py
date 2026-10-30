@@ -61,33 +61,52 @@ def quad(p0, c, p1, n=40):
 def line(p0, p1, n=20):
     return [(p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t) for t in (i / n for i in range(n + 1))]
 
-TOP = (line((533, 540), (533, 498)) + quad((533, 498), (533, 466), (562, 472)) +
-       quad((562, 472), (690, 478), (818, 490)) + quad((818, 490), (833, 492), (833, 520)) +
-       line((833, 520), (833, 540)))
-BOTTOM = (line((533, 665), (533, 708)) + quad((533, 708), (533, 742), (562, 735)) +
-          quad((562, 735), (690, 716), (820, 697)) + quad((820, 697), (833, 695), (833, 684)))
-STEM = line((533, 567), (533, 632))
+# Sozinho, o quadro do logotipo ficava aberto (as lacunas existem para as letras
+# passarem). Aqui ele e fechado e leva um "play" no meio: vira um simbolo completo.
+FRAME = (quad((533, 498), (533, 466), (562, 472)) + quad((562, 472), (690, 478), (818, 490)) +
+         quad((818, 490), (833, 492), (833, 520)) + line((833, 520), (833, 684)) +
+         quad((833, 684), (833, 695), (820, 697)) + quad((820, 697), (690, 716), (562, 735)) +
+         quad((562, 735), (533, 742), (533, 708)) + line((533, 708), (533, 498)))
+def densify(pts, step=0.35):
+    out = []
+    for (ax, ay), (bx, by) in zip(pts, pts[1:] + pts[:1]):
+        n = max(1, int(((bx - ax) ** 2 + (by - ay) ** 2) ** 0.5 / step))
+        out += [(ax + (bx - ax) * k / n, ay + (by - ay) * k / n) for k in range(n)]
+    return out
+
+FRAME = densify(FRAME)
+PLAY = [(652, 560), (652, 646), (728, 603)]
 STROKE = 14
 
 def lerp(c0, c1, t):
     return tuple(round(c0[i] + (c1[i] - c0[i]) * t) for i in range(3))
 
+def smooth(t):
+    t = max(0.0, min(1.0, t))
+    return t * t * (3 - 2 * t)
+
 def draw_mark(dark_bg, scale=8, stroke=STROKE):
-    x0, y0, x1, y1 = 500, 440, 870, 770
+    x0, y0, x1, y1 = 505, 445, 862, 765
     img = Image.new("RGBA", ((x1 - x0) * scale, (y1 - y0) * scale), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     r = stroke / 2 * scale
     red = ((0x8E, 0x3C, 0x3C), (0xE0, 0x5A, 0x5C)) if dark_bg else ((0x5E, 0x2E, 0x2D), (0xC7, 0x43, 0x45))
     green = ((0x5A, 0x92, 0x56), (0xB4, 0xD8, 0x6A)) if dark_bg else ((0x4B, 0x73, 0x48), (0x95, 0xBD, 0x5A))
-    for pts, (c0, c1) in ((TOP, red), (BOTTOM, green)):
-        for px_, py_ in pts:
-            t = (px_ - 533) / (833 - 533)
-            cx, cy = (px_ - x0) * scale, (py_ - y0) * scale
-            d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(*lerp(c0, c1, t), 255))
-    stem = LIGHT if dark_bg else NAVY
-    for px_, py_ in STEM:
+    for px_, py_ in FRAME:
+        t = (px_ - 533) / (833 - 533)
+        mix = smooth((py_ - 560) / 100)  # em cima vermelho, embaixo verde, mistura no meio
+        color = lerp(lerp(*red, t), lerp(*green, t), mix)
         cx, cy = (px_ - x0) * scale, (py_ - y0) * scale
-        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(*stem, 255))
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(*color, 255))
+    ink = LIGHT if dark_bg else NAVY
+    pts = [((px_ - x0) * scale, (py_ - y0) * scale) for px_, py_ in PLAY]
+    d.polygon(pts, fill=(*ink, 255))
+    rr = 5 * scale  # cantos arredondados do play
+    for i in range(3):
+        (ax, ay), (bx, by) = pts[i], pts[(i + 1) % 3]
+        for k in range(41):
+            cx, cy = ax + (bx - ax) * k / 40, ay + (by - ay) * k / 40
+            d.ellipse((cx - rr, cy - rr, cx + rr, cy + rr), fill=(*ink, 255))
     return img
 
 for name, dark_bg in (("mark-light", False), ("mark-dark", True)):
@@ -108,8 +127,8 @@ for y in range(bg.height):
 mask = Image.new("L", base.size, 0)
 ImageDraw.Draw(mask).rounded_rectangle((200, 200, S * 2 - 200, S * 2 - 200), radius=458, fill=255)
 base.paste(bg, (0, 0), mask)
-mark = draw_mark(True, stroke=26)
-target = int(S * 2 * 0.60)
+mark = draw_mark(True, stroke=22)
+target = int(S * 2 * 0.58)
 mark = mark.resize((target, round(mark.height * target / mark.width)), Image.LANCZOS)
 base.alpha_composite(mark, ((S * 2 - mark.width) // 2, (S * 2 - mark.height) // 2))
 os.makedirs(os.path.join(root, "build"), exist_ok=True)
