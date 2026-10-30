@@ -5,6 +5,7 @@
 
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
+  AppUpdateInfo,
   BatchSettingsPayload,
   BatchSummary,
   DownloadProgressEvent,
@@ -21,6 +22,7 @@ import type {
   UiMediaInfo,
   UiQueueItem,
   YtDlpInfo,
+  YtDlpUpdateInfo,
 } from "./ipc-types";
 
 const api = {
@@ -52,6 +54,13 @@ const api = {
    * aqui no preload.
    */
   getPathForFile: (file: File): string => webUtils.getPathForFile(file),
+
+  checkAppUpdate: (): Promise<AppUpdateInfo> => ipcRenderer.invoke("update:check"),
+  openUpdatePage: (url: string): Promise<void> => ipcRenderer.invoke("update:open", url),
+  updateYtDlp: (): Promise<YtDlpUpdateInfo> => ipcRenderer.invoke("ytdlp:update"),
+  onYtDlpUpdated: (handler: (result: YtDlpUpdateInfo) => void): void => {
+    ipcRenderer.on("ytdlp:updated", (_event, payload: YtDlpUpdateInfo) => handler(payload));
+  },
 
   getYtDlp: (): Promise<YtDlpInfo> => ipcRenderer.invoke("ytdlp:info"),
   listDownloads: (): Promise<UiDownloadItem[]> => ipcRenderer.invoke("download:list"),

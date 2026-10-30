@@ -184,6 +184,8 @@ interface UiMediaInfo {
   isLive: boolean;
 }
 
+interface AppUpdateInfo { available: boolean; current: string; latest?: string; url?: string; notes?: string; error?: string; }
+interface YtDlpUpdateInfo { updated: boolean; from: string; to: string; }
 interface YtDlpInfo { available: boolean; path?: string; version?: string; hint?: string; }
 
 interface Preferences {
@@ -229,6 +231,10 @@ interface VideoimagemApi {
   cancelItem(id: string): Promise<boolean>;
   cancelAll(): Promise<void>;
   getPathForFile(file: File): string;
+  checkAppUpdate(): Promise<AppUpdateInfo>;
+  openUpdatePage(url: string): Promise<void>;
+  updateYtDlp(): Promise<YtDlpUpdateInfo>;
+  onYtDlpUpdated(handler: (result: YtDlpUpdateInfo) => void): void;
   getYtDlp(): Promise<YtDlpInfo>;
   listDownloads(): Promise<UiDownloadItem[]>;
   analyzeDownload(url: string): Promise<UiMediaInfo>;
@@ -302,6 +308,12 @@ const dom = {
   logBox: el<HTMLDetailsElement>("log-box"),
   log: el("log"),
   ytdlpMissing: el("ytdlp-missing"),
+  ytdlpUpdate: el<HTMLButtonElement>("ytdlp-update"),
+  updateBanner: el("update-banner"),
+  updateTitle: el("update-title"),
+  updateSub: el("update-sub"),
+  updateOpen: el<HTMLButtonElement>("update-open"),
+  updateDismiss: el<HTMLButtonElement>("update-dismiss"),
   downloadForm: el<HTMLFormElement>("download-form"),
   downloadUrl: el<HTMLInputElement>("download-url"),
   downloadEmpty: el("download-empty"),
@@ -1439,6 +1451,37 @@ async function submitDownload(): Promise<void> {
   }
 }
 
+function showYtDlpVersion(version: string | undefined): void {
+  dom.ytdlpUpdate.textContent = `yt-dlp ${version ?? ""}`.trim();
+}
+
+async function checkYtDlpUpdate(): Promise<void> {
+  dom.ytdlpUpdate.disabled = true;
+  dom.ytdlpUpdate.textContent = "Verificando…";
+  try {
+    const result = await api.updateYtDlp();
+    showYtDlpVersion(result.to);
+    dom.ytdlpUpdate.title = result.updated
+      ? `Atualizado de ${result.from} para ${result.to}`
+      : "Você já tem o yt-dlp mais novo";
+    if (!result.updated) dom.ytdlpUpdate.textContent = `yt-dlp ${result.to} ✓`;
+  } catch (error) {
+    dom.ytdlpUpdate.textContent = "Falhou — tentar de novo";
+    dom.ytdlpUpdate.title = describeError(error);
+  } finally {
+    dom.ytdlpUpdate.disabled = false;
+  }
+}
+
+async function checkAppUpdate(): Promise<void> {
+  const info = await api.checkAppUpdate();
+  if (!info.available || !info.url) return; // sem internet ou sem versao nova: silencio
+  dom.updateTitle.textContent = `Versão ${info.latest} disponível`;
+  dom.updateSub.textContent = `Você está na ${info.current}.`;
+  dom.updateOpen.onclick = () => void api.openUpdatePage(info.url!);
+  dom.updateBanner.hidden = false;
+}
+
 async function initDownloads(): Promise<void> {
   const ytdlp = await api.getYtDlp();
   if (!ytdlp.available) {
@@ -1449,6 +1492,7 @@ async function initDownloads(): Promise<void> {
     return;
   }
   dom.downloadGo.title = `yt-dlp ${ytdlp.version ?? ""}`.trim();
+  showYtDlpVersion(ytdlp.version);
   dom.downloadDir.textContent = await api.getDownloadDir();
   await refreshDownloads(api.listDownloads());
 }
@@ -1456,6 +1500,15 @@ async function initDownloads(): Promise<void> {
 // --------------------------------------------------------------------------- //
 
 function wireEvents(): void {
+  dom.ytdlpUpdate.addEventListener("click", () => void checkYtDlpUpdate());
+  dom.updateDismiss.addEventListener("click", () => {
+    dom.updateBanner.hidden = true;
+  });
+  api.onYtDlpUpdated((result) => {
+    showYtDlpVersion(result.to);
+    dom.ytdlpUpdate.title = `Atualizado sozinho de ${result.from} para ${result.to}`;
+  });
+
   dom.navConverter.addEventListener("click", () => showView("converter"));
   dom.navDownloader.addEventListener("click", () => showView("downloader"));
 
@@ -1669,6 +1722,8 @@ async function boot(): Promise<void> {
   } catch (error) {
     setDownloadMessage(describeError(error));
   }
+
+  void checkAppUpdate().catch(() => {});
 }
 
 void boot();

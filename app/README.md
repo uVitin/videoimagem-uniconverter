@@ -28,12 +28,36 @@ export VIDEOIMAGEM_FFPROBE=/caminho/para/ffprobe
 export VIDEOIMAGEM_YTDLP=/caminho/para/yt-dlp
 ```
 
+## Atualizações
+
+- **O app avisa de versão nova.** Ao abrir, consulta a última Release pública do GitHub
+  (`uVitin/videoimagem-uniconverter`); se a versão for maior que a instalada, aparece um
+  aviso na barra lateral com o botão "Baixar", que abre a página da Release. A pessoa baixa
+  o DMG e arrasta para Aplicativos. Sem internet ou sem Release, nada aparece.
+  (Atualização sem reinstalar exigiria assinatura da Apple.)
+- **O yt-dlp se atualiza sozinho.** Alguns segundos após abrir, o app confere o yt-dlp oficial,
+  baixa o novo (SHA-256 conferido) para `~/Library/Application Support/<app>/bin` e passa a usá-lo.
+  Existe também o botão com a versão, no rodapé do Downloader, para verificar na hora.
+  O app usa sempre o yt-dlp mais novo entre esse, o do Homebrew e o embutido.
+
+### Publicar uma versão nova
+
+```bash
+# 1. suba a versão em app/package.json (ex.: 0.2.0) e commite
+cd app && npm test && npm run dist          # gera os DMGs em app/release/
+gh release create v0.2.0 release/*.dmg \
+  --title "0.2.0" --notes "o que mudou"      # a tag precisa ser maior que a anterior
+```
+
+Quem já tem o app instalado vê o aviso na próxima vez que abrir. Só funciona em quem já
+tem uma versão com esse aviso (a partir da 0.1.0 gerada depois desta mudança).
+
 ## Comandos
 
 ```bash
 npm install
 npm start     # build + abre o app
-npm test      # 94 testes, inclui conversões reais
+npm test      # 105 testes, inclui conversões reais
 npm run build # só compila
 npm run pack  # empacota sem gerar instalador (release/mac/)
 npm run dist  # gera os DMG (x64 + arm64) em release/

@@ -26,6 +26,12 @@
         </button>
 
         <div class="sidebar-foot">
+          <div class="update-banner" id="update-banner" role="status" hidden>
+            <button type="button" class="icon-btn" id="update-dismiss" aria-label="Dispensar">×</button>
+            <strong id="update-title">Nova versão</strong>
+            <span id="update-sub"></span>
+            <button type="button" class="btn small primary" id="update-open">Baixar</button>
+          </div>
           <div class="env" id="env">verificando ambiente…</div>
         </div>
       </nav>
@@ -198,6 +204,9 @@
               <input type="checkbox" id="download-ask" checked />
               <span>Perguntar as opções ao adicionar</span>
             </label>
+            <button type="button" class="btn ghost small" id="ytdlp-update" title="Verificar se há yt-dlp mais novo">
+              yt-dlp
+            </button>
             <span class="dl-spacer"></span>
             <span class="dl-dir-label">Local do arquivo:</span>
             <button type="button" class="btn ghost small dl-dir" id="download-pick-dir" title="Trocar a pasta">

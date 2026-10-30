@@ -5,7 +5,7 @@
  * servidor dele (MediaDownloader.bundle), porque os sites mudam toda semana.
  * Nao repetimos isso: usamos o yt-dlp, que e mantido publicamente e roda como
  * binario separado -- o mesmo modelo do ffmpeg (ver binaries.ts). O usuario
- * instala e atualiza com `brew upgrade yt-dlp`.
+ * instala, ou usa o que vem no app (que se atualiza sozinho, ver updates.ts).
  *
  * Este modulo e puro Node (sem Electron) para poder ser testado isoladamente.
  */
@@ -15,6 +15,8 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Readable } from "node:stream";
 import { promisify } from "node:util";
+
+import { compareVersions } from "./updates";
 
 const exec = promisify(execFile);
 
@@ -65,29 +67,65 @@ export function bundledYtDlpPath(resourcesPath: string | undefined): string | nu
 }
 
 let cached: YtDlpBinary | null = null;
+let managedDir: string | null = null;
 
+/** Pasta onde o app guarda o yt-dlp que ele mesmo atualizou (userData/bin). */
+export function setManagedYtDlpDir(dir: string | null): void {
+  managedDir = dir;
+}
+
+export function managedYtDlpPath(): string | null {
+  return managedDir ? join(managedDir, "yt-dlp") : null;
+}
+
+async function versionOf(path: string): Promise<string | null> {
+  try {
+    const { stdout } = await exec(path, ["--version"], { timeout: 30_000 });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Escolhe o yt-dlp: VIDEOIMAGEM_YTDLP manda; senao vale o MAIS NOVO entre o
+ * atualizado pelo app, o do PATH/Homebrew e o que veio no instalador. Assim um
+ * yt-dlp velho esquecido no brew nao segura o app atras, e um app novo com
+ * yt-dlp embutido mais recente tambem nao e ofuscado por uma copia antiga.
+ */
 export async function locateYtDlp(force = false): Promise<YtDlpBinary> {
   if (cached && !force) return cached;
 
   const resources = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
-  const path =
-    fromEnv() ?? (await fromPath()) ?? fromSearchDirs() ?? bundledYtDlpPath(resources);
-  if (!path) {
+  const fromEnvPath = fromEnv();
+  if (fromEnvPath) {
+    cached = { path: fromEnvPath, version: (await versionOf(fromEnvPath)) ?? "desconhecida" };
+    return cached;
+  }
+
+  const managed = managedYtDlpPath();
+  const candidates = [
+    managed && existsSync(managed) ? managed : null,
+    await fromPath(),
+    fromSearchDirs(),
+    bundledYtDlpPath(resources),
+  ].filter((p, i, all): p is string => p !== null && all.indexOf(p) === i);
+
+  if (candidates.length === 0) {
     throw new Error(
       "nao encontrei o yt-dlp. Reinstale o app (ele vem junto), instale com " +
         "'brew install yt-dlp' ou aponte VIDEOIMAGEM_YTDLP para o binario.",
     );
   }
 
-  let version = "desconhecida";
-  try {
-    const { stdout } = await exec(path, ["--version"]);
-    version = stdout.trim() || version;
-  } catch {
-    // versao e informativa; nao impede o uso
+  let best: YtDlpBinary | null = null;
+  for (const path of candidates) {
+    const version = await versionOf(path);
+    if (version === null) continue;
+    if (!best || compareVersions(version, best.version) > 0) best = { path, version };
   }
-
-  cached = { path, version };
+  // nenhum respondeu a --version: ainda assim tenta o primeiro (versao e so informativa)
+  cached = best ?? { path: candidates[0]!, version: "desconhecida" };
   return cached;
 }
 

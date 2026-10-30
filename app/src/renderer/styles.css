@@ -123,6 +123,21 @@ body {
 
 .sidebar-foot { margin-top: auto; padding: 8px 4px 0; }
 
+.update-banner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.update-banner span { color: var(--fg-muted); }
+.update-banner .btn { align-self: flex-start; margin-top: 4px; }
+.update-banner .icon-btn { position: absolute; top: 2px; right: 2px; }
+
 .env {
   font: 10px/1.4 var(--mono);
   color: var(--fg-faint);

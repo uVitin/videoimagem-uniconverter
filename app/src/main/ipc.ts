@@ -1,7 +1,7 @@
 /** Handlers de IPC: tudo que o renderer pode pedir ao processo principal. */
 
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
-import { basename } from "node:path";
+import { basename, join } from "node:path";
 
 import { availableEncoders, resolveBinaries, type Binaries } from "../engine/binaries";
 import { buildCommand, commandToString } from "../engine/command";
@@ -9,17 +9,21 @@ import { linkProfile, type PresetDatabase } from "../engine/data";
 import { decidePassthrough } from "../engine/passthrough";
 import type { ProbeResult } from "../engine/probe";
 import { resolvePreset, type UserChoices } from "../engine/resolver";
+import { checkAppUpdate, isAppReleaseUrl, updateYtDlp } from "../engine/updates";
 import {
   fetchMediaInfo,
   isDownloadQuality,
   locateYtDlp,
+  managedYtDlpPath,
   normalizeUrl,
+  setManagedYtDlpDir,
   type MediaInfo,
 } from "../engine/ytdlp";
 import { DownloadManager, type DownloadItem } from "./downloads";
 import { ConversionQueue, buildOutputPath, type QueueItem } from "./queue";
 import { readPreferences, writePreferences } from "./preferences";
 import type {
+  AppUpdateInfo,
   BatchSettingsPayload,
   BatchSummary,
   ChoiceOptions,
@@ -38,6 +42,7 @@ import type {
   UiQueueItem,
   UiSourceInfo,
   YtDlpInfo,
+  YtDlpUpdateInfo,
 } from "./ipc-types";
 
 /**
@@ -329,6 +334,18 @@ export function registerIpc({ db, window }: IpcContext): void {
     if (!window.isDestroyed()) window.webContents.send(channel, payload);
   };
 
+  // yt-dlp atualizado pelo proprio app fica em userData/bin (o do instalador nao se mexe)
+  setManagedYtDlpDir(join(app.getPath("userData"), "bin"));
+
+  async function refreshYtDlp(): Promise<YtDlpUpdateInfo> {
+    const target = managedYtDlpPath();
+    if (!target) throw new Error("pasta de atualizacao indisponivel");
+    const current = (await locateYtDlp()).version;
+    const result = await updateYtDlp(current, target);
+    if (result.updated) await locateYtDlp(true);
+    return result;
+  }
+
   async function ensureQueue(): Promise<ConversionQueue> {
     if (queue) return queue;
     const active = await resolveBinaries();
@@ -391,6 +408,37 @@ export function registerIpc({ db, window }: IpcContext): void {
       };
     }
   });
+
+  ipcMain.handle("ytdlp:update", (): Promise<YtDlpUpdateInfo> => refreshYtDlp());
+
+  ipcMain.handle("update:check", async (): Promise<AppUpdateInfo> => {
+    const current = app.getVersion();
+    try {
+      const status = await checkAppUpdate(current);
+      return { ...status };
+    } catch (error) {
+      return {
+        available: false,
+        current,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcMain.handle("update:open", async (_event, url: string): Promise<void> => {
+    if (typeof url === "string" && isAppReleaseUrl(url)) await shell.openExternal(url);
+  });
+
+  // em segundo plano, sem incomodar: yt-dlp velho e a causa mais comum de "parou de baixar"
+  setTimeout(() => {
+    refreshYtDlp()
+      .then((result) => {
+        if (result.updated) send("ytdlp:updated", result);
+      })
+      .catch(() => {
+        // sem internet ou GitHub fora do ar: segue com o yt-dlp que ja tem
+      });
+  }, 5000);
 
   ipcMain.handle("env:info", async (): Promise<EnvironmentInfo> => {
     const active = await resolveBinaries();

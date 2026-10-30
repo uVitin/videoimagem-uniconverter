@@ -270,6 +270,22 @@ export interface YtDlpInfo {
   hint?: string;
 }
 
+export interface AppUpdateInfo {
+  available: boolean;
+  current: string;
+  latest?: string;
+  url?: string;
+  notes?: string;
+  /** falha ao consultar (sem internet etc.); nao e erro para o usuario */
+  error?: string;
+}
+
+export interface YtDlpUpdateInfo {
+  updated: boolean;
+  from: string;
+  to: string;
+}
+
 export interface EnvironmentInfo {
   ffmpeg: string;
   ffprobe: string;
